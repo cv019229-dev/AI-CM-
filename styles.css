@@ -172,6 +172,16 @@ button {
   background: rgba(242, 201, 109, 0.12);
 }
 
+.sidebar-empty {
+  margin: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(246, 251, 247, 0.68);
+  padding: 12px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
 .project-card strong {
   display: block;
   margin: 6px 0 8px;

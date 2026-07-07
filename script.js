@@ -1,67 +1,4 @@
-const STORAGE_KEY = "ai-cm-projects-v2";
-
-const sampleRisks = [
-  {
-    category: "불일치·누락",
-    type: "불일치",
-    issue: "도면에는 방수층 2회 시공, 내역서는 1회로 반영",
-    source: "도면 A-301 / 내역서 B-04",
-    decision: "설계변경 검토",
-    priority: "높음",
-    action: "설계자 확인 후 필요 시 설계변경 검토 항목으로 관리합니다.",
-    rfi: "도면 A-301의 방수층 2회 시공 표기와 내역서 B-04의 1회 반영 내용이 달라, 적용 기준과 계약 내역 반영 여부 확인을 요청드립니다.",
-  },
-  {
-    category: "불일치·누락",
-    type: "누락",
-    issue: "시방서에 품질시험 기준이 있으나 내역서 시험비 항목 없음",
-    source: "특기시방서 01450 / 내역서 공통가설",
-    decision: "공사비 영향",
-    priority: "중간",
-    action: "시험 대상과 횟수를 확인하고 별도 비용 반영 여부를 검토합니다.",
-    rfi: "특기시방서 01450에 품질시험 기준이 명시되어 있으나 내역서에 시험비 항목이 확인되지 않습니다. 시험 범위와 비용 반영 기준 확인을 요청드립니다.",
-  },
-  {
-    category: "RFI 후보",
-    type: "불일치",
-    issue: "마감표는 포세린타일, 내역서는 자기질타일로 표기",
-    source: "마감표 A-102 / 내역서 마감공사",
-    decision: "RFI 후보",
-    priority: "높음",
-    action: "적용 자재 등급을 공식 질의로 확인합니다.",
-    rfi: "마감표 A-102에는 포세린타일, 내역서 마감공사에는 자기질타일로 표기되어 있습니다. 최종 적용 자재와 내역 기준 확인을 요청드립니다.",
-  },
-  {
-    category: "설계변경 검토",
-    type: "누락",
-    issue: "상세도에 금속 보강철물 표기가 있으나 내역 항목 없음",
-    source: "상세도 S-211 / 내역서 금속공사",
-    decision: "설계변경 검토",
-    priority: "높음",
-    action: "시공 필요 여부와 물량 산출 근거를 확인합니다.",
-    rfi: "상세도 S-211에 금속 보강철물이 표기되어 있으나 내역서 금속공사 항목에서 확인되지 않습니다. 시공 필요 여부와 내역 반영 기준 확인을 요청드립니다.",
-  },
-  {
-    category: "공사비 영향",
-    type: "수량 차이",
-    issue: "창호 일람표 수량과 내역서 창호 수량이 다름",
-    source: "창호도 A-501 / 내역서 창호공사",
-    decision: "공사비 영향",
-    priority: "중간",
-    action: "실제 설치 위치별 수량을 다시 대조합니다.",
-    rfi: "창호도 A-501의 창호 일람표 수량과 내역서 창호공사 수량이 일치하지 않습니다. 계약 수량 기준 확인을 요청드립니다.",
-  },
-  {
-    category: "RFI 후보",
-    type: "확인",
-    issue: "시방서에는 친환경 인증 자재 사용 조건이 있으나 제품 기준 불명확",
-    source: "특기시방서 09600",
-    decision: "RFI 후보",
-    priority: "낮음",
-    action: "인증 범위와 제출 서류를 확인합니다.",
-    rfi: "특기시방서 09600의 친환경 인증 자재 사용 조건에 대해 적용 범위와 제출 서류 기준 확인을 요청드립니다.",
-  },
-];
+const API_BASE_URL = "https://ai-cm-production.up.railway.app";
 
 const categories = ["불일치·누락", "RFI 후보", "설계변경 검토", "공사비 영향"];
 
@@ -80,60 +17,38 @@ const rfiText = document.querySelector("#rfiText");
 const tabs = document.querySelectorAll(".tab");
 const runReview = document.querySelector("#runReview");
 const copyRfi = document.querySelector("#copyRfi");
+const sampleBadge = document.querySelector("#sampleBadge");
 const fileNameFields = {
   drawing: document.querySelector("#drawingFileName"),
   spec: document.querySelector("#specFileName"),
   cost: document.querySelector("#costFileName"),
 };
 
-let state = loadState();
+let state = {
+  activeProjectId: "",
+  projects: [],
+  files: [],
+  reviewItems: [],
+};
 let selectedRiskId = null;
 
-function createId() {
-  return `project-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function createRiskId(index) {
-  return `risk-${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`;
-}
-
-function createProject(name, amount, scope, risks = []) {
-  return {
-    id: createId(),
-    name,
-    amount: amount || "금액 미입력",
-    scope: scope || "범위 미입력",
-    files: {
-      drawing: "",
-      spec: "",
-      cost: "",
+async function api(path, options = {}) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
     },
-    risks,
-  };
-}
+    ...options,
+  });
 
-function loadState() {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) {
-    return JSON.parse(stored);
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : {};
+
+  if (!response.ok) {
+    throw new Error(data.error || "서버 요청에 실패했습니다.");
   }
 
-  const demoProject = createProject("가상 예시 프로젝트", "24.8억", "건축 마감 중심", withRiskIds(sampleRisks));
-  return {
-    activeProjectId: demoProject.id,
-    projects: [demoProject],
-  };
-}
-
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-function withRiskIds(items) {
-  return items.map((item, index) => ({
-    ...item,
-    id: createRiskId(index),
-  }));
+  return data;
 }
 
 function activeProject() {
@@ -141,7 +56,7 @@ function activeProject() {
 }
 
 function currentRisks() {
-  return activeProject()?.risks || [];
+  return state.reviewItems || [];
 }
 
 function colorForDecision(value) {
@@ -164,6 +79,11 @@ function countByCategory(category) {
 function renderProjectList() {
   projectList.innerHTML = "";
 
+  if (state.projects.length === 0) {
+    projectList.innerHTML = '<p class="sidebar-empty">생성된 프로젝트가 없습니다.</p>';
+    return;
+  }
+
   state.projects.forEach((project) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -172,12 +92,7 @@ function renderProjectList() {
       <strong>${project.name}</strong>
       <span>${project.amount} · ${project.scope}</span>
     `;
-    button.addEventListener("click", () => {
-      state.activeProjectId = project.id;
-      selectedRiskId = null;
-      saveState();
-      renderAll();
-    });
+    button.addEventListener("click", () => loadProject(project.id));
     projectList.appendChild(button);
   });
 }
@@ -187,14 +102,25 @@ function renderProjectHeader() {
   if (!project) {
     currentProjectName.textContent = "프로젝트 없음";
     currentProjectMeta.textContent = "새 프로젝트를 생성해 주세요.";
+    fileNameFields.drawing.textContent = "선택된 파일 없음";
+    fileNameFields.spec.textContent = "선택된 파일 없음";
+    fileNameFields.cost.textContent = "선택된 파일 없음";
     return;
   }
 
   currentProjectName.textContent = project.name;
   currentProjectMeta.textContent = `${project.amount} · ${project.scope}`;
-  fileNameFields.drawing.textContent = project.files.drawing || "선택된 파일 없음";
-  fileNameFields.spec.textContent = project.files.spec || "선택된 파일 없음";
-  fileNameFields.cost.textContent = project.files.cost || "선택된 파일 없음";
+
+  const latestFileByKind = Object.fromEntries(
+    ["drawing", "spec", "cost"].map((kind) => [
+      kind,
+      state.files.find((file) => file.kind === kind)?.name || "선택된 파일 없음",
+    ]),
+  );
+
+  fileNameFields.drawing.textContent = latestFileByKind.drawing;
+  fileNameFields.spec.textContent = latestFileByKind.spec;
+  fileNameFields.cost.textContent = latestFileByKind.cost;
 }
 
 function renderCounts() {
@@ -310,7 +236,7 @@ function showToast(message) {
   toast.className = "toast";
   toast.textContent = message;
   document.body.appendChild(toast);
-  window.setTimeout(() => toast.remove(), 1800);
+  window.setTimeout(() => toast.remove(), 2200);
 }
 
 function renderAll() {
@@ -327,30 +253,114 @@ function renderAll() {
   }
 }
 
-projectForm.addEventListener("submit", (event) => {
+async function loadProjects() {
+  const data = await api("/api/projects");
+  state.projects = data.projects || [];
+  if (!state.activeProjectId && state.projects[0]) {
+    state.activeProjectId = state.projects[0].id;
+  }
+
+  if (state.activeProjectId) {
+    await loadProject(state.activeProjectId);
+    return;
+  }
+
+  renderAll();
+}
+
+async function loadProject(projectId) {
+  const data = await api(`/api/projects/${projectId}`);
+  state.activeProjectId = projectId;
+  state.files = data.files || [];
+  state.reviewItems = data.reviewItems || [];
+
+  const exists = state.projects.some((project) => project.id === data.project.id);
+  if (!exists) {
+    state.projects = [data.project, ...state.projects];
+  }
+
+  selectedRiskId = null;
+  sampleBadge.textContent = state.reviewItems.length > 0 ? "서버 저장" : "대기";
+  renderAll();
+}
+
+async function uploadFile(projectId, input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const kind = input.dataset.fileKind;
+  fileNameFields[kind].textContent = "업로드 준비 중";
+
+  const { upload } = await api(`/api/projects/${projectId}/files/presign`, {
+    method: "POST",
+    body: JSON.stringify({
+      kind,
+      filename: file.name,
+      contentType: file.type || "application/octet-stream",
+    }),
+  });
+
+  const uploadResponse = await fetch(upload.uploadUrl, {
+    method: upload.method,
+    headers: upload.headers,
+    body: file,
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error("R2 파일 업로드에 실패했습니다.");
+  }
+
+  await api(`/api/projects/${projectId}/files`, {
+    method: "POST",
+    body: JSON.stringify({
+      kind,
+      name: file.name,
+      r2Key: upload.key,
+      url: upload.publicUrl,
+    }),
+  });
+
+  await loadProject(projectId);
+  showToast("파일을 서버에 저장했습니다.");
+}
+
+projectForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const name = document.querySelector("#projectNameInput").value.trim();
   const amount = document.querySelector("#projectAmountInput").value.trim();
   const scope = document.querySelector("#projectScopeInput").value.trim();
   if (!name) return;
 
-  const project = createProject(name, amount, scope);
-  state.projects.push(project);
-  state.activeProjectId = project.id;
-  selectedRiskId = null;
-  saveState();
-  projectForm.reset();
-  renderAll();
-  showToast("새 프로젝트를 생성했습니다.");
+  try {
+    const { project } = await api("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({ name, amount, scope }),
+    });
+    state.projects = [project, ...state.projects];
+    projectForm.reset();
+    await loadProject(project.id);
+    showToast("새 프로젝트를 서버에 생성했습니다.");
+  } catch (error) {
+    showToast(error.message);
+  }
 });
 
 document.querySelectorAll("[data-file-kind]").forEach((input) => {
-  input.addEventListener("change", () => {
+  input.addEventListener("change", async () => {
     const project = activeProject();
-    if (!project) return;
-    project.files[input.dataset.fileKind] = input.files[0]?.name || "";
-    saveState();
-    renderProjectHeader();
+    if (!project) {
+      showToast("먼저 프로젝트를 생성해 주세요.");
+      input.value = "";
+      return;
+    }
+
+    try {
+      await uploadFile(project.id, input);
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      input.value = "";
+    }
   });
 });
 
@@ -362,7 +372,7 @@ tabs.forEach((tab) => {
   });
 });
 
-runReview.addEventListener("click", () => {
+runReview.addEventListener("click", async () => {
   const project = activeProject();
   if (!project) {
     showToast("먼저 프로젝트를 생성해 주세요.");
@@ -373,16 +383,25 @@ runReview.addEventListener("click", () => {
   runReview.disabled = true;
   runReview.textContent = "검토 중";
 
-  window.setTimeout(() => {
-    project.risks = withRiskIds(sampleRisks);
-    selectedRiskId = project.risks[0]?.id || null;
-    saveState();
+  try {
+    const data = await api(`/api/projects/${project.id}/reviews/run`, {
+      method: "POST",
+      body: JSON.stringify({
+        notes: "현재 업로드된 설계도서 목록을 기준으로 1차 설계관리 위험 후보를 분류합니다.",
+      }),
+    });
+    state.reviewItems = data.reviewItems || [];
+    selectedRiskId = state.reviewItems[0]?.id || null;
+    sampleBadge.textContent = data.source === "openai" ? "AI 검토" : "샘플 결과";
+    renderAll();
+    showToast(data.warning || "AI 검토 결과를 서버에 저장했습니다.");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
     document.body.classList.remove("is-running");
     runReview.disabled = false;
-    runReview.innerHTML = '<span aria-hidden="true">↻</span> 샘플 검토 실행';
-    renderAll();
-    showToast("선택 프로젝트에 가상 검토 결과를 넣었습니다.");
-  }, 800);
+    runReview.innerHTML = '<span aria-hidden="true">↻</span> AI 검토 실행';
+  }
 });
 
 copyRfi.addEventListener("click", async () => {
@@ -394,4 +413,7 @@ copyRfi.addEventListener("click", async () => {
   }
 });
 
-renderAll();
+loadProjects().catch((error) => {
+  showToast(error.message);
+  renderAll();
+});
