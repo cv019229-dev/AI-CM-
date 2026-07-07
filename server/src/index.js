@@ -34,12 +34,24 @@ app.use(express.json({ limit: "3mb" }));
 app.use(express.static(rootDir));
 
 app.get("/api/health", (_request, response) => {
+  const requiredR2Variables = [
+    "R2_ACCOUNT_ID",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_BUCKET_NAME",
+  ];
+
   response.json({
     ok: true,
     service: "ai-cm-review-api",
     database: dbMode(),
     r2Configured: isR2Configured(),
     openAIConfigured: isOpenAIConfigured(),
+    config: {
+      databaseUrl: Boolean(process.env.DATABASE_URL),
+      openAiApiKey: Boolean(process.env.OPENAI_API_KEY),
+      r2MissingVariables: requiredR2Variables.filter((name) => !process.env[name]),
+    },
   });
 });
 
