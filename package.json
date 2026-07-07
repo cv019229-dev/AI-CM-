@@ -1,0 +1,23 @@
+{
+  "name": "ai-cm-review",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/src/index.js",
+    "dev": "node --watch server/src/index.js",
+    "check": "node --check server/src/index.js && node --check server/src/db.js && node --check server/src/r2.js && node --check server/src/openai.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.950.0",
+    "@aws-sdk/s3-request-presigner": "^3.950.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.22.1",
+    "openai": "^6.10.0",
+    "pg": "^8.16.3"
+  }
+}

@@ -1,0 +1,69 @@
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+function r2Endpoint() {
+  if (process.env.R2_ENDPOINT) {
+    return process.env.R2_ENDPOINT;
+  }
+
+  return `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+}
+
+export function isR2Configured() {
+  return Boolean(
+    process.env.R2_ACCOUNT_ID &&
+      process.env.R2_ACCESS_KEY_ID &&
+      process.env.R2_SECRET_ACCESS_KEY &&
+      process.env.R2_BUCKET_NAME,
+  );
+}
+
+function createClient() {
+  return new S3Client({
+    region: "auto",
+    endpoint: r2Endpoint(),
+    credentials: {
+      accessKeyId: process.env.R2_ACCESS_KEY_ID,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+    },
+  });
+}
+
+function cleanFilename(filename) {
+  return filename
+    .normalize("NFKC")
+    .replace(/[\\/:*?"<>|#%{}^~[\]`]/g, "-")
+    .replace(/\s+/g, "-")
+    .slice(0, 140);
+}
+
+export async function createUploadUrl({ projectId, kind, filename, contentType }) {
+  if (!isR2Configured()) {
+    const error = new Error("Cloudflare R2 환경변수가 아직 설정되지 않았습니다.");
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const safeName = cleanFilename(filename || "upload.bin");
+  const key = `projects/${projectId}/${kind}/${Date.now()}-${safeName}`;
+  const command = new PutObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME,
+    Key: key,
+    ContentType: contentType || "application/octet-stream",
+  });
+
+  const uploadUrl = await getSignedUrl(createClient(), command, { expiresIn: 60 * 10 });
+  const publicUrl = process.env.R2_PUBLIC_URL
+    ? `${process.env.R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`
+    : "";
+
+  return {
+    method: "PUT",
+    uploadUrl,
+    key,
+    publicUrl,
+    headers: {
+      "Content-Type": contentType || "application/octet-stream",
+    },
+  };
+}
