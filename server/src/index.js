@@ -11,12 +11,16 @@ import {
   dbMode,
   getProject,
   initDb,
+  listDocumentExtracts,
   listProjectFiles,
   listProjects,
   listReviewItems,
   replaceReviewItems,
+  saveDocumentExtract,
 } from "./db.js";
-import { createUploadUrl, isR2Configured } from "./r2.js";
+import { buildComparisonCandidates } from "./comparison.js";
+import { extractDocument } from "./extractor.js";
+import { createUploadUrl, getObjectBuffer, isR2Configured } from "./r2.js";
 import { generateReviewItems, isOpenAIConfigured } from "./openai.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -89,8 +93,9 @@ app.get("/api/projects/:projectId", async (request, response, next) => {
     }
 
     const files = await listProjectFiles(project.id);
+    const documentExtracts = await listDocumentExtracts(project.id);
     const reviewItems = await listReviewItems(project.id);
-    return response.json({ project, files, reviewItems });
+    return response.json({ project, files, documentExtracts, reviewItems });
   } catch (error) {
     return next(error);
   }
@@ -133,7 +138,24 @@ app.post("/api/projects/:projectId/files", async (request, response, next) => {
     }
 
     const file = await addProjectFile(project.id, { kind, name, r2Key, url });
-    return response.status(201).json({ file });
+    let documentExtract = null;
+
+    if (file.r2_key) {
+      try {
+        const buffer = await getObjectBuffer(file.r2_key);
+        const extract = await extractDocument(buffer, file);
+        documentExtract = await saveDocumentExtract(project.id, file, extract);
+      } catch (error) {
+        documentExtract = await saveDocumentExtract(project.id, file, {
+          status: "failed",
+          extractedText: "",
+          structuredData: {},
+          warning: error.message || "문서 추출에 실패했습니다.",
+        });
+      }
+    }
+
+    return response.status(201).json({ file, documentExtract });
   } catch (error) {
     return next(error);
   }
@@ -152,6 +174,19 @@ app.get("/api/projects/:projectId/review-items", async (request, response, next)
   }
 });
 
+app.get("/api/projects/:projectId/document-extracts", async (request, response, next) => {
+  try {
+    const project = await getProject(request.params.projectId);
+    if (!project) {
+      return response.status(404).json({ error: "프로젝트를 찾을 수 없습니다." });
+    }
+
+    return response.json({ documentExtracts: await listDocumentExtracts(project.id) });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.post("/api/projects/:projectId/reviews/run", async (request, response, next) => {
   try {
     const project = await getProject(request.params.projectId);
@@ -160,9 +195,13 @@ app.post("/api/projects/:projectId/reviews/run", async (request, response, next)
     }
 
     const files = await listProjectFiles(project.id);
+    const extracts = await listDocumentExtracts(project.id);
+    const candidates = buildComparisonCandidates({ project, files, extracts });
     const generated = await generateReviewItems({
       project,
       files,
+      extracts,
+      candidates,
       notes: request.body.notes || "",
     });
     const reviewItems = await replaceReviewItems(project.id, generated.items);

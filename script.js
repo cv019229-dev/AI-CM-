@@ -28,6 +28,7 @@ let state = {
   activeProjectId: "",
   projects: [],
   files: [],
+  documentExtracts: [],
   reviewItems: [],
 };
 let selectedRiskId = null;
@@ -272,6 +273,7 @@ async function loadProject(projectId) {
   const data = await api(`/api/projects/${projectId}`);
   state.activeProjectId = projectId;
   state.files = data.files || [];
+  state.documentExtracts = data.documentExtracts || [];
   state.reviewItems = data.reviewItems || [];
 
   const exists = state.projects.some((project) => project.id === data.project.id);
@@ -280,7 +282,8 @@ async function loadProject(projectId) {
   }
 
   selectedRiskId = null;
-  sampleBadge.textContent = state.reviewItems.length > 0 ? "서버 저장" : "대기";
+  sampleBadge.textContent =
+    state.documentExtracts.length > 0 ? `문서 추출 ${state.documentExtracts.length}건` : "서버 저장";
   renderAll();
 }
 

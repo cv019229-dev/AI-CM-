@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/src/index.js",
     "dev": "node --watch server/src/index.js",
-    "check": "node --check server/src/index.js && node --check server/src/db.js && node --check server/src/r2.js && node --check server/src/openai.js"
+    "check": "node --check server/src/index.js && node --check server/src/db.js && node --check server/src/r2.js && node --check server/src/openai.js && node --check server/src/extractor.js && node --check server/src/comparison.js && node --check script.js"
   },
   "engines": {
     "node": ">=20"
@@ -18,6 +18,8 @@
     "dotenv": "^17.2.3",
     "express": "^4.22.1",
     "openai": "^6.10.0",
-    "pg": "^8.16.3"
+    "pdf-parse": "^2.4.5",
+    "pg": "^8.16.3",
+    "read-excel-file": "^9.2.0"
   }
 }

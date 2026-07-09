@@ -26,15 +26,32 @@
 - 내역서 파일 업로드
 - Cloudflare R2에 파일 저장
 - Railway API에서 R2 업로드용 사전 서명 URL 발급
+- 업로드 완료 후 서버가 R2에서 파일을 다시 읽어 문서 내용 추출
 
-### 3. AI 검토 실행
+### 3. 문서 내용 추출
+
+- 내역서 Excel `.xlsx` 첫 번째 시트 분석
+- 공종, 품명, 규격, 단위, 수량, 단가, 금액, 비고 후보 추출
+- PDF 텍스트 추출
+- 텍스트가 없는 스캔 PDF는 OCR 필요 상태로 표시
+- 추출 결과를 PostgreSQL에 저장
+
+### 4. 문서 간 비교 후보 생성
+
+- 도면·시방서에는 있으나 내역서에 없는 키워드 후보 탐지
+- 시험·검사 기준은 있으나 시험비 항목이 없는 경우 후보 생성
+- 시공 횟수 등 단순 불일치 후보 생성
+- 스캔 PDF처럼 텍스트 추출이 안 된 문서는 확인 후보로 분류
+
+### 5. AI 검토 실행
 
 - 선택한 프로젝트 기준으로 AI 검토 실행
-- OpenAI API 호출
+- 프로젝트 정보, 업로드 파일 목록, 문서 추출 결과, 규칙 기반 비교 후보를 OpenAI API에 전달
+- AI가 검토 결과를 4개 카테고리로 정리
 - 검토 결과를 PostgreSQL에 저장
 - 검토 결과를 다시 화면에 표시
 
-### 4. 카테고리별 결과 출력
+### 6. 카테고리별 결과 출력
 
 검토 결과는 아래 4개 카테고리로 분리해 보여줍니다.
 
@@ -43,7 +60,7 @@
 - 설계변경 검토
 - 공사비 영향
 
-### 5. 상세 검토 및 RFI 초안
+### 7. 상세 검토 및 RFI 초안
 
 - 검토 항목 클릭 시 상세 내용 표시
 - 관련 문서 위치 표시
@@ -65,11 +82,14 @@ Railway API Server
   - Express 서버
   - 프로젝트 API
   - 파일 업로드 API
+  - 문서 추출 API
+  - 비교 후보 생성
   - AI 검토 API
   ↓
 PostgreSQL
   - 프로젝트 정보
   - 업로드 파일 정보
+  - 문서 추출 결과
   - AI 검토 결과
   ↓
 Cloudflare R2
@@ -90,6 +110,7 @@ OpenAI API
 - Backend Hosting: Railway
 - Database: PostgreSQL
 - File Storage: Cloudflare R2
+- Document Parsing: read-excel-file, pdf-parse
 - AI: OpenAI API
 - Source Control: GitHub
 
@@ -108,6 +129,8 @@ OpenAI API
       ├─ index.js
       ├─ db.js
       ├─ r2.js
+      ├─ extractor.js
+      ├─ comparison.js
       └─ openai.js
 ```
 
@@ -174,6 +197,7 @@ POST /api/projects/:projectId/files
 ### 검토 결과
 
 ```http
+GET /api/projects/:projectId/document-extracts
 GET /api/projects/:projectId/review-items
 POST /api/projects/:projectId/reviews/run
 ```
@@ -194,15 +218,19 @@ http://localhost:3000/api/health
 ## 현재 한계
 
 - 실제 PDF, HWP, Excel의 본문 추출은 아직 고도화 전입니다.
-- 현재 AI 검토는 업로드 파일 목록과 메모를 바탕으로 1차 후보를 생성하는 구조입니다.
+- Excel은 현재 `.xlsx` 첫 번째 시트를 우선 분석합니다.
+- HWP 본문 추출은 아직 지원하지 않습니다.
+- 스캔 도면 PDF는 OCR이 별도로 필요합니다.
 - 프로젝트 삭제 기능은 아직 없습니다.
 - 사용자 로그인 및 권한 분리는 아직 없습니다.
 - 실제 현장 적용 전에는 전문가 검토가 필요합니다.
 
 ## 다음 개발 과제
 
-- PDF, Excel 문서 본문 추출
+- Excel 다중 시트 분석 고도화
+- PDF 본문 추출 정확도 개선
 - 도면 OCR 또는 도면 텍스트 추출
+- HWP 문서 추출
 - 프로젝트 삭제 기능
 - 사용자 로그인
 - 회사별 프로젝트 권한 관리

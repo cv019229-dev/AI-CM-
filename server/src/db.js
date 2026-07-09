@@ -7,6 +7,7 @@ const memory = {
   projects: new Map(),
   files: new Map(),
   reviewItems: new Map(),
+  documentExtracts: new Map(),
 };
 
 let pool = null;
@@ -57,6 +58,19 @@ export async function initDb() {
       rfi text,
       created_at timestamptz not null default now()
     );
+
+    create table if not exists document_extracts (
+      id text primary key,
+      project_id text not null references projects(id) on delete cascade,
+      file_id text not null references project_files(id) on delete cascade,
+      kind text not null,
+      name text not null,
+      status text not null,
+      extracted_text text,
+      structured_data jsonb,
+      warning text,
+      created_at timestamptz not null default now()
+    );
   `);
 }
 
@@ -89,6 +103,7 @@ export async function createProject({ name, amount, scope }) {
   memory.projects.set(project.id, project);
   memory.files.set(project.id, []);
   memory.reviewItems.set(project.id, []);
+  memory.documentExtracts.set(project.id, []);
   return project;
 }
 
@@ -125,6 +140,60 @@ export async function addProjectFile(projectId, { kind, name, r2Key, url }) {
   files.push(file);
   memory.files.set(projectId, files);
   return file;
+}
+
+export async function saveDocumentExtract(projectId, file, extract) {
+  const row = {
+    id: randomUUID(),
+    project_id: projectId,
+    file_id: file.id,
+    kind: file.kind,
+    name: file.name,
+    status: extract.status,
+    extracted_text: extract.extractedText || "",
+    structured_data: extract.structuredData || {},
+    warning: extract.warning || "",
+    created_at: new Date().toISOString(),
+  };
+
+  if (pool) {
+    await pool.query("delete from document_extracts where file_id = $1", [file.id]);
+    await pool.query(
+      `insert into document_extracts
+       (id, project_id, file_id, kind, name, status, extracted_text, structured_data, warning)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        row.id,
+        row.project_id,
+        row.file_id,
+        row.kind,
+        row.name,
+        row.status,
+        row.extracted_text,
+        row.structured_data,
+        row.warning,
+      ],
+    );
+    return row;
+  }
+
+  const extracts = memory.documentExtracts.get(projectId) || [];
+  const kept = extracts.filter((item) => item.file_id !== file.id);
+  kept.push(row);
+  memory.documentExtracts.set(projectId, kept);
+  return row;
+}
+
+export async function listDocumentExtracts(projectId) {
+  if (pool) {
+    const result = await pool.query(
+      "select * from document_extracts where project_id = $1 order by created_at desc",
+      [projectId],
+    );
+    return result.rows;
+  }
+
+  return memory.documentExtracts.get(projectId) || [];
 }
 
 export async function listProjectFiles(projectId) {

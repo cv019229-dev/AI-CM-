@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 function r2Endpoint() {
@@ -27,6 +27,14 @@ function createClient() {
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     },
   });
+}
+
+async function streamToBuffer(stream) {
+  const chunks = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
 }
 
 function cleanFilename(filename) {
@@ -66,4 +74,19 @@ export async function createUploadUrl({ projectId, kind, filename, contentType }
       "Content-Type": contentType || "application/octet-stream",
     },
   };
+}
+
+export async function getObjectBuffer(key) {
+  if (!isR2Configured()) {
+    const error = new Error("Cloudflare R2 환경변수가 아직 설정되지 않았습니다.");
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const command = new GetObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME,
+    Key: key,
+  });
+  const result = await createClient().send(command);
+  return streamToBuffer(result.Body);
 }
