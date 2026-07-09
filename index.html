@@ -8,7 +8,7 @@
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="프로젝트 메뉴">
+      <aside class="sidebar" aria-label="주요 메뉴">
         <div class="brand">
           <div class="brand-mark" aria-hidden="true">CM</div>
           <div>
@@ -17,88 +17,152 @@
           </div>
         </div>
 
-        <nav class="nav-list" aria-label="주요 화면">
-          <a class="nav-item active" href="#dashboard">
+        <nav class="nav-list" aria-label="화면 이동">
+          <a class="nav-item active" href="#dashboard" data-page-link="dashboard">
             <span aria-hidden="true">⌂</span>
             대시보드
           </a>
-          <a class="nav-item" href="#createProject">
+          <a class="nav-item" href="#projects" data-page-link="projects">
             <span aria-hidden="true">＋</span>
-            프로젝트 생성
+            프로젝트 관리
           </a>
-          <a class="nav-item" href="#categoryOutput">
-            <span aria-hidden="true">□</span>
-            카테고리별 결과
+          <a class="nav-item" href="#upload" data-page-link="upload">
+            <span aria-hidden="true">⇧</span>
+            문서 업로드
           </a>
-          <a class="nav-item" href="#rfi">
-            <span aria-hidden="true">?</span>
-            RFI 초안
+          <a class="nav-item" href="#extracts" data-page-link="extracts">
+            <span aria-hidden="true">▤</span>
+            추출 결과
+          </a>
+          <a class="nav-item" href="#results" data-page-link="results">
+            <span aria-hidden="true">◎</span>
+            검토 결과
           </a>
         </nav>
 
         <div class="project-switcher">
-          <div class="section-heading compact">
-            <div>
-              <span class="eyebrow">프로젝트</span>
-              <strong>선택</strong>
-            </div>
+          <div class="side-heading">
+            <span>프로젝트</span>
+            <strong>빠른 선택</strong>
           </div>
           <div class="project-list" id="projectList"></div>
         </div>
 
-        <div class="project-card">
-          <span class="eyebrow">현재 프로젝트</span>
+        <div class="current-project">
+          <span>현재 프로젝트</span>
           <strong id="currentProjectName">프로젝트 없음</strong>
-          <p id="currentProjectMeta">새 프로젝트를 생성해 주세요.</p>
+          <p id="currentProjectMeta">프로젝트를 먼저 생성해 주세요.</p>
         </div>
       </aside>
 
-      <main class="main" id="dashboard">
+      <main class="main">
         <header class="topbar">
           <div>
-            <p class="eyebrow">소규모 공사 설계관리 리스크 1차 분류</p>
-            <h1>AI-CM 설계정보 검토 보조 서비스</h1>
+            <p class="eyebrow" id="pageEyebrow">설계관리 리스크 1차 분류</p>
+            <h1 id="pageTitle">대시보드</h1>
+            <p id="pageSubtitle">프로젝트 상태와 검토 진행 상황을 한눈에 확인합니다.</p>
           </div>
           <button class="primary-btn" type="button" id="runReview">
-            <span aria-hidden="true">↻</span>
             AI 검토 실행
           </button>
         </header>
 
-        <section class="project-create-panel" id="createProject" aria-label="프로젝트 생성">
-          <div>
-            <p class="eyebrow">프로젝트 생성</p>
-            <h2>공사별로 검토 결과를 분리 관리</h2>
+        <section class="page-view active" data-page="dashboard" aria-label="대시보드">
+          <div class="metric-grid">
+            <article class="metric-card">
+              <span>프로젝트</span>
+              <strong id="countProjects">0</strong>
+              <p>등록된 공사</p>
+            </article>
+            <article class="metric-card">
+              <span>업로드 파일</span>
+              <strong id="countFiles">0</strong>
+              <p>현재 프로젝트 기준</p>
+            </article>
+            <article class="metric-card">
+              <span>문서 추출</span>
+              <strong id="countExtracts">0</strong>
+              <p>OCR 포함</p>
+            </article>
+            <article class="metric-card">
+              <span>검토 항목</span>
+              <strong id="countReviews">0</strong>
+              <p>AI 검토 결과</p>
+            </article>
           </div>
-          <form class="project-form" id="projectForm">
-            <label>
-              <span>공사명</span>
-              <input id="projectNameInput" type="text" placeholder="예: 근린생활시설 증축공사" required />
-            </label>
-            <label>
-              <span>공사금액</span>
-              <input id="projectAmountInput" type="text" placeholder="예: 24.8억" />
-            </label>
-            <label>
-              <span>검토 범위</span>
-              <input id="projectScopeInput" type="text" placeholder="예: 건축 마감, 방수, 창호" />
-            </label>
-            <button class="secondary-btn project-submit" type="submit">생성</button>
-          </form>
+
+          <div class="dashboard-grid">
+            <section class="panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">진행 현황</p>
+                  <h2>현재 프로젝트 요약</h2>
+                </div>
+              </div>
+              <div class="status-list" id="dashboardStatus"></div>
+            </section>
+
+            <section class="panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">검토 흐름</p>
+                  <h2>다음 작업</h2>
+                </div>
+              </div>
+              <ol class="work-steps">
+                <li>프로젝트를 생성합니다.</li>
+                <li>도면, 시방서, 내역서를 업로드합니다.</li>
+                <li>문서 추출 결과를 확인합니다.</li>
+                <li>AI 검토를 실행하고 결과를 확인합니다.</li>
+              </ol>
+            </section>
+          </div>
         </section>
 
-        <section class="workspace-grid" aria-label="프로젝트 검토 작업영역">
-          <div class="upload-panel">
+        <section class="page-view" data-page="projects" aria-label="프로젝트 생성 및 관리">
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">프로젝트 생성</p>
+                <h2>공사별로 자료와 검토 결과를 분리합니다.</h2>
+              </div>
+            </div>
+            <form class="project-form" id="projectForm">
+              <label>
+                <span>공사명</span>
+                <input id="projectNameInput" type="text" placeholder="예: 주민센터 증축공사" required />
+              </label>
+              <label>
+                <span>공사금액</span>
+                <input id="projectAmountInput" type="text" placeholder="예: 24.8억" />
+              </label>
+              <label>
+                <span>검토 범위</span>
+                <input id="projectScopeInput" type="text" placeholder="예: 건축 마감, 방수, 창호" />
+              </label>
+              <button class="secondary-btn project-submit" type="submit">프로젝트 생성</button>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">프로젝트 목록</p>
+                <h2>선택한 프로젝트만 업로드와 검토에 사용됩니다.</h2>
+              </div>
+            </div>
+            <div class="project-table" id="projectTable"></div>
+          </section>
+        </section>
+
+        <section class="page-view" data-page="upload" aria-label="문서 업로드">
+          <section class="panel">
             <div class="section-heading">
               <div>
                 <p class="eyebrow">자료 등록</p>
-                <h2>설계도서 업로드</h2>
+                <h2>도면, 시방서, 내역서를 프로젝트별로 업로드합니다.</h2>
               </div>
-              <span class="status-dot" id="sampleBadge">가상 예시</span>
-            </div>
-
-            <div class="sample-notice">
-              현재 표시된 항목은 실제 현장 자료가 아니라 화면 시연용으로 만든 가상 사례입니다.
+              <span class="status-badge" id="storageStatus">서버 저장</span>
             </div>
 
             <div class="upload-list">
@@ -119,7 +183,7 @@
                 </span>
               </label>
               <label class="upload-row">
-                <input type="file" accept=".xls,.xlsx,.csv" data-file-kind="cost" />
+                <input type="file" accept=".xls,.xlsx,.xlsm,.csv" data-file-kind="cost" />
                 <span class="file-icon">내</span>
                 <span>
                   <strong>내역서</strong>
@@ -127,135 +191,117 @@
                 </span>
               </label>
             </div>
-          </div>
-
-          <div class="scan-visual" aria-label="문서 비교 상태">
-            <div class="document-stack" aria-hidden="true">
-              <div class="doc-sheet drawing">
-                <span>도면</span>
-                <i></i>
-                <i></i>
-                <i></i>
-              </div>
-              <div class="doc-sheet spec">
-                <span>시방서</span>
-                <i></i>
-                <i></i>
-                <i></i>
-              </div>
-              <div class="doc-sheet cost">
-                <span>내역서</span>
-                <i></i>
-                <i></i>
-                <i></i>
-              </div>
-            </div>
-            <div class="scan-line" aria-hidden="true"></div>
-            <div class="scan-copy">
-              <p class="eyebrow">문서 간 비교</p>
-              <h2>프로젝트별 독립 검토</h2>
-              <p>선택한 프로젝트의 자료명과 검토 결과만 따로 저장됩니다.</p>
-            </div>
-          </div>
+          </section>
         </section>
 
-        <section class="summary-grid" aria-label="검토 결과 요약">
-          <article class="summary-card high">
-            <span>불일치·누락</span>
-            <strong id="countMismatch">0</strong>
-            <p>문서끼리 다르거나 빠진 항목</p>
-          </article>
-          <article class="summary-card question">
-            <span>RFI 후보</span>
-            <strong id="countRfi">0</strong>
-            <p>공식 질의가 필요한 항목</p>
-          </article>
-          <article class="summary-card change">
-            <span>설계변경 검토</span>
-            <strong id="countChange">0</strong>
-            <p>계약 내용 변화 가능성</p>
-          </article>
-          <article class="summary-card cost">
-            <span>공사비 영향</span>
-            <strong id="countCost">0</strong>
-            <p>누락·증가·신규 단가 가능성</p>
-          </article>
-        </section>
-
-        <section class="category-output" id="categoryOutput" aria-label="카테고리별 결과">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">카테고리별 출력</p>
-              <h2>검토 결과</h2>
-            </div>
-          </div>
-          <div class="category-grid" id="categoryGrid"></div>
-        </section>
-
-        <section class="review-layout" id="risks" aria-label="상세 검토">
-          <div class="review-list">
+        <section class="page-view" data-page="extracts" aria-label="문서 추출 결과">
+          <section class="panel">
             <div class="section-heading">
               <div>
-                <p class="eyebrow">전체 검토표</p>
-                <h2>선택 프로젝트 항목</h2>
-              </div>
-              <div class="filter-tabs" role="tablist" aria-label="위험 항목 필터">
-                <button class="tab active" type="button" data-filter="all">전체</button>
-                <button class="tab" type="button" data-filter="높음">높음</button>
-                <button class="tab" type="button" data-filter="RFI 후보">RFI</button>
-                <button class="tab" type="button" data-filter="공사비 영향">공사비</button>
+                <p class="eyebrow">문서 추출</p>
+                <h2>서버가 읽은 문서 내용을 확인합니다.</h2>
               </div>
             </div>
+            <div class="extract-list" id="extractList"></div>
+          </section>
+        </section>
 
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>구분</th>
-                    <th>발견 내용</th>
-                    <th>관련 문서</th>
-                    <th>위험 판단</th>
-                    <th>우선순위</th>
-                  </tr>
-                </thead>
-                <tbody id="riskTable"></tbody>
-              </table>
-            </div>
+        <section class="page-view" data-page="results" aria-label="검토 결과">
+          <div class="summary-grid">
+            <article class="summary-card high">
+              <span>불일치·누락</span>
+              <strong id="countMismatch">0</strong>
+              <p>문서 간 내용이 다르거나 빠진 항목</p>
+            </article>
+            <article class="summary-card question">
+              <span>RFI 후보</span>
+              <strong id="countRfi">0</strong>
+              <p>공식 질의가 필요한 항목</p>
+            </article>
+            <article class="summary-card change">
+              <span>설계변경 검토</span>
+              <strong id="countChange">0</strong>
+              <p>계약 내용 변경 가능성</p>
+            </article>
+            <article class="summary-card cost">
+              <span>공사비 영향</span>
+              <strong id="countCost">0</strong>
+              <p>누락, 물량 증가, 신규 단가 가능성</p>
+            </article>
           </div>
 
-          <aside class="detail-panel" aria-label="선택 항목 상세">
+          <section class="panel">
             <div class="section-heading">
               <div>
-                <p class="eyebrow">상세 검토</p>
-                <h2 id="detailTitle">선택된 항목 없음</h2>
+                <p class="eyebrow">카테고리별 출력</p>
+                <h2>검토 결과</h2>
               </div>
-              <span class="priority-badge low" id="detailPriority">대기</span>
+            </div>
+            <div class="category-grid" id="categoryGrid"></div>
+          </section>
+
+          <section class="review-layout">
+            <div class="panel review-list">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">전체 검토표</p>
+                  <h2>검토 항목 목록</h2>
+                </div>
+                <div class="filter-tabs" role="tablist" aria-label="검토 항목 필터">
+                  <button class="tab active" type="button" data-filter="all">전체</button>
+                  <button class="tab" type="button" data-filter="high">중요</button>
+                  <button class="tab" type="button" data-filter="rfi">RFI</button>
+                  <button class="tab" type="button" data-filter="cost">공사비</button>
+                </div>
+              </div>
+
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>구분</th>
+                      <th>발견 내용</th>
+                      <th>관련 문서</th>
+                      <th>판단</th>
+                      <th>우선순위</th>
+                    </tr>
+                  </thead>
+                  <tbody id="riskTable"></tbody>
+                </table>
+              </div>
             </div>
 
-            <dl class="detail-list">
-              <div>
-                <dt>AI 발견 내용</dt>
-                <dd id="detailIssue">검토 항목을 선택하면 상세 내용이 표시됩니다.</dd>
+            <aside class="panel detail-panel" aria-label="선택 항목 상세">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">상세 검토</p>
+                  <h2 id="detailTitle">선택된 항목 없음</h2>
+                </div>
+                <span class="priority-badge low" id="detailPriority">대기</span>
               </div>
-              <div>
-                <dt>확인 위치</dt>
-                <dd id="detailSource">-</dd>
-              </div>
-              <div>
-                <dt>권장 조치</dt>
-                <dd id="detailAction">-</dd>
-              </div>
-            </dl>
 
-            <div class="rfi-box" id="rfi">
-              <span class="eyebrow">RFI 초안</span>
-              <p id="rfiText">RFI 후보 항목을 선택하면 문안 초안이 표시됩니다.</p>
-              <button class="secondary-btn" type="button" id="copyRfi">
-                <span aria-hidden="true">⧉</span>
-                문안 복사
-              </button>
-            </div>
-          </aside>
+              <dl class="detail-list">
+                <div>
+                  <dt>AI 발견 내용</dt>
+                  <dd id="detailIssue">검토 항목을 선택하면 상세 내용이 표시됩니다.</dd>
+                </div>
+                <div>
+                  <dt>확인 위치</dt>
+                  <dd id="detailSource">-</dd>
+                </div>
+                <div>
+                  <dt>권장 조치</dt>
+                  <dd id="detailAction">-</dd>
+                </div>
+              </dl>
+
+              <div class="rfi-box">
+                <span class="eyebrow">RFI 초안</span>
+                <p id="rfiText">RFI 후보 항목을 선택하면 문안 초안이 표시됩니다.</p>
+                <button class="secondary-btn" type="button" id="copyRfi">문안 복사</button>
+              </div>
+            </aside>
+          </section>
         </section>
       </main>
     </div>
