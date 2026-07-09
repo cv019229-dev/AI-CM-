@@ -1,23 +1,34 @@
 import { createRequire } from "node:module";
+import JSZip from "jszip";
+import { XMLParser } from "fast-xml-parser";
 
 const require = createRequire(import.meta.url);
 const pdfParse = require("pdf-parse");
-const readXlsxFileModule = require("read-excel-file/node");
-const readXlsxFile = readXlsxFileModule.default || readXlsxFileModule;
+
+const xmlParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: "",
+  textNodeName: "text",
+});
 
 const COST_HEADER_MAP = {
-  trade: ["공종", "공사", "분류", "종별"],
-  item: ["품명", "명칭", "항목", "내역", "자재명"],
-  spec: ["규격", "사양", "치수", "두께"],
-  unit: ["단위"],
-  quantity: ["수량", "물량"],
-  unitPrice: ["단가"],
-  amount: ["금액", "합계"],
-  note: ["비고", "메모", "특기"],
+  trade: ["공종", "공사", "분류", "종별", "trade", "work"],
+  item: ["품명", "명칭", "항목", "내역", "자재명", "item", "name"],
+  spec: ["규격", "사양", "치수", "두께", "spec", "size"],
+  unit: ["단위", "unit"],
+  quantity: ["수량", "물량", "quantity", "qty"],
+  unitPrice: ["단가", "unit price", "price"],
+  amount: ["금액", "합계", "amount", "total"],
+  note: ["비고", "메모", "특기", "note", "remark"],
 };
 
 function extensionOf(filename) {
   return filename.split(".").pop()?.toLowerCase() || "";
+}
+
+function asArray(value) {
+  if (value == null) return [];
+  return Array.isArray(value) ? value : [value];
 }
 
 function cellText(value) {
@@ -26,7 +37,6 @@ function cellText(value) {
     if (value.text) return String(value.text);
     if (value.richText) return value.richText.map((item) => item.text).join("");
     if (value.result != null) return String(value.result);
-    if (value.hyperlink && value.text) return String(value.text);
   }
   return String(value).trim();
 }
@@ -42,7 +52,7 @@ function toNumber(value) {
 function findHeaderRow(rows) {
   let best = { index: -1, score: 0 };
 
-  rows.slice(0, 20).forEach((row, index) => {
+  rows.slice(0, 30).forEach((row, index) => {
     const joined = row.join(" ");
     const score = Object.values(COST_HEADER_MAP)
       .flat()
@@ -61,7 +71,8 @@ function mapHeaders(headerRow) {
 
   headerRow.forEach((header, index) => {
     for (const [field, keywords] of Object.entries(COST_HEADER_MAP)) {
-      if (keywords.some((keyword) => header.includes(keyword))) {
+    const normalizedHeader = header.toLowerCase();
+    if (keywords.some((keyword) => normalizedHeader.includes(keyword.toLowerCase()))) {
         mapping[field] = index;
       }
     }
@@ -70,15 +81,125 @@ function mapHeaders(headerRow) {
   return mapping;
 }
 
+function columnIndex(cellRef = "") {
+  const letters = cellRef.replace(/\d/g, "");
+  let index = 0;
+
+  for (const letter of letters) {
+    index = index * 26 + letter.toUpperCase().charCodeAt(0) - 64;
+  }
+
+  return Math.max(index - 1, 0);
+}
+
+async function zipText(zip, path) {
+  const file = zip.file(path);
+  return file ? file.async("text") : "";
+}
+
+function readRelationships(xml) {
+  if (!xml) return {};
+  const parsed = xmlParser.parse(xml);
+  const relationships = asArray(parsed.Relationships?.Relationship);
+  return Object.fromEntries(relationships.map((rel) => [rel.Id, rel.Target]));
+}
+
+function resolveWorkbookTarget(target) {
+  if (!target) return "";
+  if (target.startsWith("/")) return target.slice(1);
+  return `xl/${target}`.replace(/\/+/g, "/");
+}
+
+function readSharedStrings(xml) {
+  if (!xml) return [];
+  const parsed = xmlParser.parse(xml);
+  const items = asArray(parsed.sst?.si);
+
+  return items.map((item) => collectText(item).join(""));
+}
+
+function collectText(node, output = []) {
+  if (node == null) return output;
+  if (typeof node === "string" || typeof node === "number") {
+    output.push(String(node));
+    return output;
+  }
+  if (Array.isArray(node)) {
+    node.forEach((item) => collectText(item, output));
+    return output;
+  }
+  if (typeof node === "object") {
+    if (typeof node.text === "string" || typeof node.text === "number") {
+      output.push(String(node.text));
+    }
+    for (const [key, value] of Object.entries(node)) {
+      if (["text", "rPr", "pPr", "tblPr", "tcPr", "trPr", "runPr", "secPr"].includes(key)) continue;
+      collectText(value, output);
+    }
+  }
+  return output;
+}
+
+function parseSheetRows(xml, sharedStrings) {
+  const parsed = xmlParser.parse(xml);
+  const sheetRows = asArray(parsed.worksheet?.sheetData?.row);
+
+  return sheetRows.map((row) => {
+    const values = [];
+    asArray(row.c).forEach((cell) => {
+      const index = columnIndex(cell.r);
+      let value = "";
+      const rawValue = cell.v ?? cell.is?.t ?? "";
+
+      if (cell.t === "s") {
+        value = sharedStrings[Number(rawValue)] || "";
+      } else if (cell.t === "inlineStr") {
+        value = collectText(cell.is).join("");
+      } else {
+        value = cellText(rawValue);
+      }
+
+      values[index] = cellText(value);
+    });
+
+    return values.map((value) => value || "");
+  });
+}
+
+async function readXlsxSheets(buffer) {
+  const zip = await JSZip.loadAsync(buffer);
+  const workbookXml = await zipText(zip, "xl/workbook.xml");
+  const workbookRelsXml = await zipText(zip, "xl/_rels/workbook.xml.rels");
+  const sharedStringsXml = await zipText(zip, "xl/sharedStrings.xml");
+  const workbook = xmlParser.parse(workbookXml);
+  const relations = readRelationships(workbookRelsXml);
+  const sharedStrings = readSharedStrings(sharedStringsXml);
+
+  const workbookSheets = asArray(workbook.workbook?.sheets?.sheet);
+  const sheets = [];
+
+  for (const sheet of workbookSheets) {
+    const relationshipId = sheet["r:id"] || sheet.id;
+    const target = resolveWorkbookTarget(relations[relationshipId]);
+    const xml = await zipText(zip, target);
+    if (!xml) continue;
+
+    sheets.push({
+      name: sheet.name || target,
+      rows: parseSheetRows(xml, sharedStrings),
+    });
+  }
+
+  return sheets;
+}
+
 async function extractExcel(buffer, file) {
-  const sheetNames = ["첫 번째 시트"];
+  const workbookSheets = await readXlsxSheets(buffer);
   const sheets = [];
   const costItems = [];
 
-  for (const sheetName of sheetNames) {
-    const rawRows = await readXlsxFile(buffer);
-    const rows = rawRows.map((row) => row.map(cellText));
-
+  for (const sheet of workbookSheets) {
+    const rows = sheet.rows;
     const headerIndex = findHeaderRow(rows);
     const headers = headerIndex >= 0 ? rows[headerIndex] : [];
     const mapping = headerIndex >= 0 ? mapHeaders(headers) : {};
@@ -93,7 +214,7 @@ async function extractExcel(buffer, file) {
       if (![itemName, trade, spec, note].some(Boolean)) return;
 
       costItems.push({
-        sheet: sheetName,
+        sheet: sheet.name,
         trade,
         item: itemName,
         spec,
@@ -106,7 +227,7 @@ async function extractExcel(buffer, file) {
     });
 
     sheets.push({
-      name: sheetName,
+      name: sheet.name,
       rowCount: rows.length,
       headerDetected: headerIndex >= 0,
       headers,
@@ -116,13 +237,15 @@ async function extractExcel(buffer, file) {
   return {
     status: "extracted",
     extractedText: costItems
-      .slice(0, 200)
+      .slice(0, 500)
       .map((item) =>
-        [item.trade, item.item, item.spec, item.unit, item.quantity, item.note].filter(Boolean).join(" / "),
+        [item.sheet, item.trade, item.item, item.spec, item.unit, item.quantity, item.note]
+          .filter(Boolean)
+          .join(" / "),
       )
       .join("\n"),
     structuredData: {
-      parser: "read-excel-file",
+      parser: "custom-ooxml",
       documentType: "cost",
       sheets,
       costItems,
@@ -154,6 +277,50 @@ async function extractPdf(buffer, file) {
   };
 }
 
+async function extractHwpx(buffer, file) {
+  const zip = await JSZip.loadAsync(buffer);
+  const sectionPaths = Object.keys(zip.files)
+    .filter((path) => /Contents\/section\d+\.xml$/i.test(path))
+    .sort((a, b) => a.localeCompare(b));
+  const sections = [];
+  const paragraphs = [];
+
+  for (const sectionPath of sectionPaths) {
+    const xml = await zipText(zip, sectionPath);
+    const parsed = xmlParser.parse(xml);
+    const textPieces = collectText(parsed)
+      .map((text) => text.trim())
+      .filter(Boolean);
+    const sectionText = textPieces.join(" ").replace(/\s+/g, " ").trim();
+
+    if (sectionText) {
+      sections.push({
+        path: sectionPath,
+        textLength: sectionText.length,
+      });
+      paragraphs.push(sectionText);
+    }
+  }
+
+  const text = paragraphs.join("\n\n").slice(0, 60000);
+
+  return {
+    status: text ? "extracted" : "unsupported",
+    extractedText: text,
+    structuredData: {
+      parser: "hwpx-xml",
+      documentType: file.kind,
+      sections,
+      lines: text
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 500),
+    },
+    warning: text ? "" : "HWPX에서 본문 텍스트를 찾지 못했습니다.",
+  };
+}
+
 function extractUnsupported(_buffer, file) {
   return {
     status: "unsupported",
@@ -175,6 +342,22 @@ export async function extractDocument(buffer, file) {
 
   if (extension === "pdf") {
     return extractPdf(buffer, file);
+  }
+
+  if (extension === "hwpx") {
+    return extractHwpx(buffer, file);
+  }
+
+  if (extension === "hwp") {
+    return {
+      status: "unsupported",
+      extractedText: "",
+      structuredData: {
+        documentType: file.kind,
+        filename: file.name,
+      },
+      warning: "구형 .hwp는 현재 서버에서 직접 추출하지 않습니다. 한글에서 .hwpx 또는 PDF로 저장한 뒤 업로드해 주세요.",
+    };
   }
 
   if (extension === "xls") {

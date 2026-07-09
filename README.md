@@ -30,9 +30,10 @@
 
 ### 3. 문서 내용 추출
 
-- 내역서 Excel `.xlsx` 첫 번째 시트 분석
+- 내역서 Excel `.xlsx`, `.xlsm` 다중 시트 분석
 - 공종, 품명, 규격, 단위, 수량, 단가, 금액, 비고 후보 추출
 - PDF 텍스트 추출
+- 한글 표준 XML 문서 `.hwpx` 본문 텍스트 추출
 - 텍스트가 없는 스캔 PDF는 OCR 필요 상태로 표시
 - 추출 결과를 PostgreSQL에 저장
 
@@ -110,7 +111,7 @@ OpenAI API
 - Backend Hosting: Railway
 - Database: PostgreSQL
 - File Storage: Cloudflare R2
-- Document Parsing: read-excel-file, pdf-parse
+- Document Parsing: JSZip, fast-xml-parser, pdf-parse
 - AI: OpenAI API
 - Source Control: GitHub
 
@@ -218,8 +219,9 @@ http://localhost:3000/api/health
 ## 현재 한계
 
 - 실제 PDF, HWP, Excel의 본문 추출은 아직 고도화 전입니다.
-- Excel은 현재 `.xlsx` 첫 번째 시트를 우선 분석합니다.
-- HWP 본문 추출은 아직 지원하지 않습니다.
+- Excel은 `.xlsx`, `.xlsm`의 여러 시트를 분석합니다.
+- 한글 파일은 `.hwpx`를 우선 지원합니다.
+- 구형 `.hwp`는 현재 직접 추출하지 않으며 `.hwpx` 또는 PDF 변환이 필요합니다.
 - 스캔 도면 PDF는 OCR이 별도로 필요합니다.
 - 프로젝트 삭제 기능은 아직 없습니다.
 - 사용자 로그인 및 권한 분리는 아직 없습니다.
@@ -227,10 +229,10 @@ http://localhost:3000/api/health
 
 ## 다음 개발 과제
 
-- Excel 다중 시트 분석 고도화
+- Excel 병합 셀, 복잡한 내역서 양식 분석 고도화
 - PDF 본문 추출 정확도 개선
 - 도면 OCR 또는 도면 텍스트 추출
-- HWP 문서 추출
+- 구형 HWP 직접 추출 또는 변환 파이프라인
 - 프로젝트 삭제 기능
 - 사용자 로그인
 - 회사별 프로젝트 권한 관리

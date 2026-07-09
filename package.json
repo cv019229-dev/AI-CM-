@@ -17,9 +17,10 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.22.1",
+    "fast-xml-parser": "^5.9.3",
+    "jszip": "^3.10.1",
     "openai": "^6.10.0",
     "pdf-parse": "^2.4.5",
-    "pg": "^8.16.3",
-    "read-excel-file": "^9.2.0"
+    "pg": "^8.16.3"
   }
 }
