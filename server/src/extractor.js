@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
 import JSZip from "jszip";
 import { XMLParser } from "fast-xml-parser";
+import { isImageFile, isOcrConfigured, ocrDocument } from "./ocr.js";
 
 const require = createRequire(import.meta.url);
 const pdfParse = require("pdf-parse");
@@ -140,6 +141,60 @@ function collectText(node, output = []) {
   return output;
 }
 
+function firstLines(text, limit = 500) {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+async function extractWithOcr(buffer, file, reason, structuredData = {}) {
+  if (!isOcrConfigured()) {
+    return {
+      status: "needs_ocr",
+      extractedText: "",
+      structuredData: {
+        parser: "openai-ocr",
+        documentType: file.kind,
+        filename: file.name,
+        ...structuredData,
+      },
+      warning: `${reason} OCR requires OPENAI_API_KEY on the server.`,
+    };
+  }
+
+  try {
+    const text = await ocrDocument(buffer, file);
+
+    return {
+      status: text ? "ocr_extracted" : "needs_ocr",
+      extractedText: text.slice(0, 60000),
+      structuredData: {
+        parser: "openai-ocr",
+        documentType: file.kind,
+        filename: file.name,
+        ...structuredData,
+        lines: firstLines(text),
+      },
+      warning: text ? "" : "OCR ran, but no readable text was found.",
+    };
+  } catch (error) {
+    return {
+      status: "needs_ocr",
+      extractedText: "",
+      structuredData: {
+        parser: "openai-ocr",
+        documentType: file.kind,
+        filename: file.name,
+        ...structuredData,
+        error: error.message,
+      },
+      warning: `OCR failed: ${error.message}`,
+    };
+  }
+}
+
 function parseSheetRows(xml, sharedStrings) {
   const parsed = xmlParser.parse(xml);
   const sheetRows = asArray(parsed.worksheet?.sheetData?.row);
@@ -254,7 +309,7 @@ async function extractExcel(buffer, file) {
   };
 }
 
-async function extractPdf(buffer, file) {
+async function extractPdfWithoutOcr(buffer, file) {
   const data = await pdfParse(buffer);
   const text = (data.text || "").replace(/\n{3,}/g, "\n\n").trim();
   const lines = text
@@ -275,6 +330,48 @@ async function extractPdf(buffer, file) {
     },
     warning: text ? "" : "PDF에서 텍스트를 찾지 못했습니다. 스캔 도면 또는 이미지 PDF일 수 있어 OCR이 필요합니다.",
   };
+}
+
+async function extractPdf(buffer, file) {
+  let data;
+
+  try {
+    data = await pdfParse(buffer);
+  } catch (error) {
+    return extractWithOcr(buffer, file, "PDF text parsing failed.", {
+      fallbackFrom: "pdf-parse",
+      parseError: error.message,
+    });
+  }
+
+  const text = (data.text || "").replace(/\n{3,}/g, "\n\n").trim();
+
+  if (!text) {
+    return extractWithOcr(buffer, file, "PDF has no embedded text.", {
+      fallbackFrom: "pdf-parse",
+      pageCount: data.numpages,
+      info: data.info || {},
+    });
+  }
+
+  return {
+    status: "extracted",
+    extractedText: text.slice(0, 60000),
+    structuredData: {
+      parser: "pdf-parse",
+      documentType: file.kind,
+      pageCount: data.numpages,
+      info: data.info || {},
+      lines: firstLines(text),
+    },
+    warning: "",
+  };
+}
+
+async function extractImage(buffer, file) {
+  return extractWithOcr(buffer, file, "Drawing image text extraction requires OCR.", {
+    sourceType: "image",
+  });
 }
 
 async function extractHwpx(buffer, file) {
@@ -342,6 +439,10 @@ export async function extractDocument(buffer, file) {
 
   if (extension === "pdf") {
     return extractPdf(buffer, file);
+  }
+
+  if (isImageFile(file)) {
+    return extractImage(buffer, file);
   }
 
   if (extension === "hwpx") {
