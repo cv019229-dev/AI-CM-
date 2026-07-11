@@ -13,14 +13,14 @@ const xmlParser = new XMLParser({
 });
 
 const COST_HEADER_MAP = {
-  trade: ["공종", "공사", "분류", "종별", "trade", "work"],
-  item: ["품명", "명칭", "항목", "내역", "자재명", "item", "name"],
-  spec: ["규격", "사양", "치수", "두께", "spec", "size"],
-  unit: ["단위", "unit"],
-  quantity: ["수량", "물량", "quantity", "qty"],
-  unitPrice: ["단가", "unit price", "price"],
-  amount: ["금액", "합계", "amount", "total"],
-  note: ["비고", "메모", "특기", "note", "remark"],
+  trade: ["공종", "공사", "분류", "종별", "직종", "세부공종", "trade", "work"],
+  item: ["품명", "품목", "명칭", "항목", "내역", "자재명", "명세", "공사명", "item", "name"],
+  spec: ["규격", "사양", "치수", "두께", "규격명", "형상", "재질", "spec", "size"],
+  unit: ["단위", "위", "unit"],
+  quantity: ["수량", "물량", "산출량", "quantity", "qty"],
+  unitPrice: ["단가", "일위대가", "재료비", "노무비", "경비", "unit price", "price"],
+  amount: ["금액", "합계", "계", "공사비", "amount", "total"],
+  note: ["비고", "메모", "특기", "참고", "적요", "note", "remark"],
 };
 
 function extensionOf(filename) {
@@ -50,14 +50,23 @@ function toNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function normalizeKeyword(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[()[\]{}:;·ㆍ._-]/g, "");
+}
+
 function findHeaderRow(rows) {
   let best = { index: -1, score: 0 };
 
-  rows.slice(0, 30).forEach((row, index) => {
-    const joined = row.join(" ");
+  rows.slice(0, 60).forEach((row, index) => {
+    const previous = rows[index - 1] || [];
+    const next = rows[index + 1] || [];
+    const joined = normalizeKeyword([...previous, ...row, ...next].join(" "));
     const score = Object.values(COST_HEADER_MAP)
       .flat()
-      .reduce((total, keyword) => total + (joined.includes(keyword) ? 1 : 0), 0);
+      .reduce((total, keyword) => total + (joined.includes(normalizeKeyword(keyword)) ? 1 : 0), 0);
 
     if (score > best.score) {
       best = { index, score };
@@ -72,8 +81,8 @@ function mapHeaders(headerRow) {
 
   headerRow.forEach((header, index) => {
     for (const [field, keywords] of Object.entries(COST_HEADER_MAP)) {
-    const normalizedHeader = header.toLowerCase();
-    if (keywords.some((keyword) => normalizedHeader.includes(keyword.toLowerCase()))) {
+      const normalizedHeader = normalizeKeyword(header);
+      if (keywords.some((keyword) => normalizedHeader.includes(normalizeKeyword(keyword)))) {
         mapping[field] = index;
       }
     }
@@ -248,10 +257,40 @@ async function readXlsxSheets(buffer) {
   return sheets;
 }
 
+function rowToText(row) {
+  return row.map((value) => cellText(value)).filter(Boolean).join(" | ");
+}
+
+function sheetToTextLines(sheet) {
+  return sheet.rows
+    .map((row, index) => ({
+      rowNumber: index + 1,
+      text: rowToText(row),
+    }))
+    .filter((row) => row.text);
+}
+
+function buildWorkbookText(workbookSheets) {
+  const lines = [];
+
+  for (const sheet of workbookSheets) {
+    const textRows = sheetToTextLines(sheet);
+    if (textRows.length === 0) continue;
+
+    lines.push(`[시트: ${sheet.name}]`);
+    textRows.slice(0, 300).forEach((row) => {
+      lines.push(`${row.rowNumber}행: ${row.text}`);
+    });
+  }
+
+  return lines.join("\n").slice(0, 60000);
+}
+
 async function extractExcel(buffer, file) {
   const workbookSheets = await readXlsxSheets(buffer);
   const sheets = [];
   const costItems = [];
+  const workbookText = buildWorkbookText(workbookSheets);
 
   for (const sheet of workbookSheets) {
     const rows = sheet.rows;
@@ -286,26 +325,37 @@ async function extractExcel(buffer, file) {
       rowCount: rows.length,
       headerDetected: headerIndex >= 0,
       headers,
+      textRowCount: sheetToTextLines(sheet).length,
     });
   }
 
+  const costItemText = costItems
+    .slice(0, 500)
+    .map((item) =>
+      [item.sheet, item.trade, item.item, item.spec, item.unit, item.quantity, item.note]
+        .filter(Boolean)
+        .join(" / "),
+    )
+    .join("\n");
+  const extractedText = costItemText || workbookText;
+  const warning =
+    costItems.length > 0
+      ? ""
+      : workbookText
+        ? `${file.name}에서 표 항목은 자동 분류하지 못했지만, 시트 텍스트는 추출했습니다.`
+        : `${file.name}에서 읽을 수 있는 텍스트를 찾지 못했습니다.`;
+
   return {
     status: "extracted",
-    extractedText: costItems
-      .slice(0, 500)
-      .map((item) =>
-        [item.sheet, item.trade, item.item, item.spec, item.unit, item.quantity, item.note]
-          .filter(Boolean)
-          .join(" / "),
-      )
-      .join("\n"),
+    extractedText,
     structuredData: {
       parser: "custom-ooxml",
       documentType: "cost",
       sheets,
       costItems,
+      textExtracted: Boolean(workbookText),
     },
-    warning: costItems.length === 0 ? `${file.name}에서 내역 항목을 찾지 못했습니다.` : "",
+    warning,
   };
 }
 
