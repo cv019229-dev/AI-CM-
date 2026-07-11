@@ -74,6 +74,8 @@ let state = {
   reviewItems: [],
 };
 let selectedRiskId = null;
+let extractionPollTimer = null;
+let extractionPollCount = 0;
 
 async function api(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -94,6 +96,43 @@ async function api(path, options = {}) {
   return data;
 }
 
+function uploadToStorage(upload, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open(upload.method, upload.uploadUrl);
+
+    Object.entries(upload.headers || {}).forEach(([name, value]) => {
+      request.setRequestHeader(name, value);
+    });
+
+    request.upload.addEventListener("progress", (event) => {
+      if (!event.lengthComputable) return;
+      const percent = Math.max(1, Math.round((event.loaded / event.total) * 100));
+      onProgress(percent);
+    });
+
+    request.addEventListener("load", () => {
+      if (request.status >= 200 && request.status < 300) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(`파일 저장소 업로드에 실패했습니다. 상태 코드: ${request.status}`));
+    });
+
+    request.addEventListener("error", () => {
+      reject(new Error("파일 저장소에 연결하지 못했습니다. R2 CORS 설정 또는 저장소 권한을 확인해 주세요."));
+    });
+
+    request.addEventListener("timeout", () => {
+      reject(new Error("파일 업로드 시간이 너무 오래 걸립니다. 파일 크기와 네트워크 상태를 확인해 주세요."));
+    });
+
+    request.timeout = 1000 * 60 * 5;
+    request.send(file);
+  });
+}
+
 function createElement(tag, className, text) {
   const element = document.createElement(tag);
   if (className) element.className = className;
@@ -107,6 +146,14 @@ function activeProject() {
 
 function currentRisks() {
   return state.reviewItems || [];
+}
+
+function processingExtracts() {
+  return state.documentExtracts.filter((extract) => extract.status === "processing");
+}
+
+function hasProcessingExtracts() {
+  return processingExtracts().length > 0;
 }
 
 function fallback(value, text = "-") {
@@ -290,14 +337,24 @@ function renderExtracts() {
     titleWrap.appendChild(createElement("h3", "", extract.name));
     titleWrap.appendChild(createElement("p", "", `${displayKind(extract.kind)} · ${extract.status}`));
     header.appendChild(titleWrap);
-    header.appendChild(createElement("span", "status-badge", extract.status === "ocr_extracted" ? "OCR 추출" : extract.status));
+    const statusText =
+      extract.status === "processing"
+        ? "분석 중"
+        : extract.status === "ocr_extracted"
+          ? "OCR 추출"
+          : extract.status;
+    header.appendChild(createElement("span", "status-badge", statusText));
     card.appendChild(header);
 
     if (extract.warning) {
       card.appendChild(createElement("p", "", `확인 필요: ${extract.warning}`));
     }
 
-    const text = createElement("div", "extract-text", extract.extracted_text?.trim() || "추출된 텍스트가 없습니다.");
+    const emptyText =
+      extract.status === "processing"
+        ? "파일 저장은 끝났고, 서버가 문서 내용을 읽는 중입니다. 큰 PDF나 OCR 파일은 시간이 더 걸릴 수 있습니다."
+        : "추출된 텍스트가 없습니다.";
+    const text = createElement("div", "extract-text", extract.extracted_text?.trim() || emptyText);
     card.appendChild(text);
     extractList.appendChild(card);
   });
@@ -414,6 +471,47 @@ function showToast(message) {
   window.setTimeout(() => toast.remove(), 2300);
 }
 
+function updateUploadStatus(message) {
+  if (storageStatus) {
+    storageStatus.textContent = message;
+  }
+}
+
+function stopExtractionPolling() {
+  if (extractionPollTimer) {
+    window.clearInterval(extractionPollTimer);
+    extractionPollTimer = null;
+  }
+  extractionPollCount = 0;
+}
+
+function startExtractionPolling() {
+  if (!state.activeProjectId || extractionPollTimer) return;
+
+  extractionPollCount = 0;
+  extractionPollTimer = window.setInterval(async () => {
+    extractionPollCount += 1;
+
+    try {
+      await loadProject(state.activeProjectId, { silent: true });
+      if (!hasProcessingExtracts()) {
+        stopExtractionPolling();
+        showToast("문서 분석이 완료되었습니다.");
+      }
+    } catch {
+      if (extractionPollCount >= 30) {
+        stopExtractionPolling();
+        showToast("분석 상태 확인이 지연되고 있습니다. 잠시 후 추출 결과 화면을 다시 열어 주세요.");
+      }
+    }
+
+    if (extractionPollCount >= 30 && hasProcessingExtracts()) {
+      stopExtractionPolling();
+      showToast("분석이 오래 걸리고 있습니다. 큰 PDF나 OCR 파일은 시간이 더 필요할 수 있습니다.");
+    }
+  }, 4000);
+}
+
 function renderAll() {
   renderProjectList();
   renderProjectTable();
@@ -446,7 +544,7 @@ async function loadProjects() {
   renderAll();
 }
 
-async function loadProject(projectId) {
+async function loadProject(projectId, options = {}) {
   const data = await api(`/api/projects/${projectId}`);
   state.activeProjectId = projectId;
   state.files = data.files || [];
@@ -458,8 +556,19 @@ async function loadProject(projectId) {
     state.projects = [data.project, ...state.projects];
   }
 
-  selectedRiskId = null;
-  storageStatus.textContent = state.files.length > 0 ? `${state.files.length}개 파일` : "서버 저장";
+  if (!options.silent) {
+    selectedRiskId = null;
+  }
+  const processingCount = processingExtracts().length;
+  if (processingCount > 0) {
+    updateUploadStatus(`서버 분석 중 ${processingCount}개`);
+    startExtractionPolling();
+  } else {
+    updateUploadStatus(state.files.length > 0 ? `${state.files.length}개 파일` : "서버 저장");
+    if (!options.silent) {
+      stopExtractionPolling();
+    }
+  }
   renderAll();
 }
 
@@ -468,7 +577,8 @@ async function uploadFile(projectId, input) {
   if (!file) return;
 
   const kind = input.dataset.fileKind;
-  fileNameFields[kind].textContent = "업로드 준비 중";
+  fileNameFields[kind].textContent = "업로드 주소 요청 중";
+  updateUploadStatus("업로드 준비 중");
 
   const { upload } = await api(`/api/projects/${projectId}/files/presign`, {
     method: "POST",
@@ -479,17 +589,16 @@ async function uploadFile(projectId, input) {
     }),
   });
 
-  const uploadResponse = await fetch(upload.uploadUrl, {
-    method: upload.method,
-    headers: upload.headers,
-    body: file,
+  fileNameFields[kind].textContent = "파일 전송 중";
+  updateUploadStatus("파일 전송 중");
+
+  await uploadToStorage(upload, file, (percent) => {
+    fileNameFields[kind].textContent = `파일 전송 중 ${percent}%`;
+    updateUploadStatus(`파일 전송 중 ${percent}%`);
   });
 
-  if (!uploadResponse.ok) {
-    throw new Error("파일 업로드에 실패했습니다.");
-  }
-
-  fileNameFields[kind].textContent = "서버 분석 중";
+  fileNameFields[kind].textContent = "서버 분석 등록 중";
+  updateUploadStatus("서버 분석 등록 중");
 
   await api(`/api/projects/${projectId}/files`, {
     method: "POST",
@@ -502,7 +611,9 @@ async function uploadFile(projectId, input) {
   });
 
   await loadProject(projectId);
-  showToast("파일을 저장하고 문서 추출을 완료했습니다.");
+  setPage("extracts");
+  startExtractionPolling();
+  showToast("파일 저장은 완료되었습니다. 문서 분석은 서버에서 계속 진행됩니다.");
 }
 
 projectForm.addEventListener("submit", async (event) => {
@@ -560,6 +671,13 @@ runReview.addEventListener("click", async () => {
   if (!project) {
     showToast("먼저 프로젝트를 생성하거나 선택해 주세요.");
     setPage("projects");
+    return;
+  }
+
+  if (hasProcessingExtracts()) {
+    showToast("문서 분석이 아직 진행 중입니다. 추출 결과 화면에서 완료 상태를 확인해 주세요.");
+    setPage("extracts");
+    startExtractionPolling();
     return;
   }
 

@@ -29,13 +29,36 @@ const rootDir = path.resolve(__dirname, "../..");
 const app = express();
 const port = Number(process.env.PORT || 3000);
 
-const corsOrigins = process.env.CORS_ORIGIN
+const configuredCorsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
-  : true;
+  : [];
+const devCorsOrigins = [
+  "http://127.0.0.1:5173",
+  "http://localhost:5173",
+  "http://127.0.0.1:5175",
+  "http://localhost:5175",
+];
+const corsOrigins =
+  configuredCorsOrigins.length > 0 ? [...configuredCorsOrigins, ...devCorsOrigins] : true;
 
 app.use(cors({ origin: corsOrigins }));
 app.use(express.json({ limit: "3mb" }));
 app.use(express.static(rootDir));
+
+async function extractFileInBackground(projectId, file) {
+  try {
+    const buffer = await getObjectBuffer(file.r2_key);
+    const extract = await extractDocument(buffer, file);
+    await saveDocumentExtract(projectId, file, extract);
+  } catch (error) {
+    await saveDocumentExtract(projectId, file, {
+      status: "failed",
+      extractedText: "",
+      structuredData: {},
+      warning: error.message || "문서 추출에 실패했습니다.",
+    });
+  }
+}
 
 app.get("/api/health", (_request, response) => {
   const requiredR2Variables = [
@@ -141,18 +164,19 @@ app.post("/api/projects/:projectId/files", async (request, response, next) => {
     let documentExtract = null;
 
     if (file.r2_key) {
-      try {
-        const buffer = await getObjectBuffer(file.r2_key);
-        const extract = await extractDocument(buffer, file);
-        documentExtract = await saveDocumentExtract(project.id, file, extract);
-      } catch (error) {
-        documentExtract = await saveDocumentExtract(project.id, file, {
-          status: "failed",
-          extractedText: "",
-          structuredData: {},
-          warning: error.message || "문서 추출에 실패했습니다.",
-        });
-      }
+      documentExtract = await saveDocumentExtract(project.id, file, {
+        status: "processing",
+        extractedText: "",
+        structuredData: {
+          documentType: file.kind,
+          filename: file.name,
+        },
+        warning: "파일 저장은 완료되었습니다. 서버에서 문서를 분석 중입니다.",
+      });
+
+      extractFileInBackground(project.id, file).catch((error) => {
+        console.error("Background extraction failed", error);
+      });
     }
 
     return response.status(201).json({ file, documentExtract });
