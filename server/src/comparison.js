@@ -110,13 +110,13 @@ export function buildComparisonCandidates({ extracts }) {
     .forEach((extract) => {
       candidates.push(
         makeItem({
-          category: "RFI 후보",
+          category: "질의 후보",
           type: "확인",
-          issue: `${extract.name}에서 텍스트를 추출하지 못했습니다. 스캔 도면 또는 이미지 PDF일 가능성이 있습니다.`,
+          issue: `${extract.name}에서 텍스트를 추출하지 못했습니다. 스캔 도면 또는 이미지 피디에프일 가능성이 있습니다.`,
           source: extract.name,
           decision: "단순 확인",
           priority: "낮음",
-          action: "OCR 처리 또는 원본 CAD/PDF 텍스트 파일 확보가 필요합니다.",
+          action: "문자인식 처리 또는 원본 도면/피디에프 텍스트 파일 확보가 필요합니다.",
           rfi: "해당 도면 또는 문서의 텍스트 확인 가능한 원본 제공 가능 여부 확인을 요청드립니다.",
         }),
       );

@@ -63,7 +63,7 @@
             <p id="pageSubtitle">프로젝트 상태와 검토 진행 상황을 한눈에 확인합니다.</p>
           </div>
           <button class="primary-btn" type="button" id="runReview">
-            AI 검토 실행
+            인공지능 검토 실행
           </button>
         </header>
 
@@ -82,12 +82,12 @@
             <article class="metric-card">
               <span>문서 추출</span>
               <strong id="countExtracts">0</strong>
-              <p>OCR 포함</p>
+              <p>문자인식 포함</p>
             </article>
             <article class="metric-card">
               <span>검토 항목</span>
               <strong id="countReviews">0</strong>
-              <p>AI 검토 결과</p>
+              <p>인공지능 검토 결과</p>
             </article>
           </div>
 
@@ -113,7 +113,7 @@
                 <li>프로젝트를 생성합니다.</li>
                 <li>도면, 시방서, 내역서를 업로드합니다.</li>
                 <li>문서 추출 결과를 확인합니다.</li>
-                <li>AI 검토를 실행하고 결과를 확인합니다.</li>
+                <li>인공지능 검토를 실행하고 결과를 확인합니다.</li>
               </ol>
             </section>
           </div>
@@ -224,7 +224,7 @@
               <p>문서 간 내용이 다르거나 빠진 항목</p>
             </article>
             <article class="summary-card question">
-              <span>RFI 후보</span>
+              <span>질의 후보</span>
               <strong id="countRfi">0</strong>
               <p>공식 질의가 필요한 항목</p>
             </article>
@@ -260,7 +260,7 @@
                 <div class="filter-tabs" role="tablist" aria-label="검토 항목 필터">
                   <button class="tab active" type="button" data-filter="all">전체</button>
                   <button class="tab" type="button" data-filter="high">중요</button>
-                  <button class="tab" type="button" data-filter="rfi">RFI</button>
+                  <button class="tab" type="button" data-filter="rfi">질의</button>
                   <button class="tab" type="button" data-filter="cost">공사비</button>
                 </div>
               </div>
@@ -292,7 +292,7 @@
 
               <dl class="detail-list">
                 <div>
-                  <dt>AI 발견 내용</dt>
+                  <dt>인공지능 발견 내용</dt>
                   <dd id="detailIssue">검토 항목을 선택하면 상세 내용이 표시됩니다.</dd>
                 </div>
                 <div>
@@ -306,8 +306,8 @@
               </dl>
 
               <div class="rfi-box">
-                <span class="eyebrow">RFI 초안</span>
-                <p id="rfiText">RFI 후보 항목을 선택하면 문안 초안이 표시됩니다.</p>
+                <span class="eyebrow">질의 초안</span>
+                <p id="rfiText">질의 후보 항목을 선택하면 문안 초안이 표시됩니다.</p>
                 <button class="secondary-btn" type="button" id="copyRfi">문안 복사</button>
               </div>
             </aside>
