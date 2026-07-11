@@ -43,6 +43,7 @@ const navLinks = document.querySelectorAll("[data-page-link]");
 const projectList = document.querySelector("#projectList");
 const projectTable = document.querySelector("#projectTable");
 const projectForm = document.querySelector("#projectForm");
+const uploadedFileList = document.querySelector("#uploadedFileList");
 const currentProjectName = document.querySelector("#currentProjectName");
 const currentProjectMeta = document.querySelector("#currentProjectMeta");
 const dashboardStatus = document.querySelector("#dashboardStatus");
@@ -349,7 +350,13 @@ function renderExtracts() {
         : extract.status === "ocr_extracted"
           ? "OCR 추출"
           : extract.status;
-    header.appendChild(createElement("span", "status-badge", statusText));
+    const headerActions = createElement("div", "file-actions");
+    headerActions.appendChild(createElement("span", "status-badge", statusText));
+    const deleteButton = createElement("button", "danger-btn", "삭제");
+    deleteButton.type = "button";
+    deleteButton.addEventListener("click", () => deleteFile(extract.file_id));
+    headerActions.appendChild(deleteButton);
+    header.appendChild(headerActions);
     card.appendChild(header);
 
     if (extract.warning) {
@@ -363,6 +370,36 @@ function renderExtracts() {
     const text = createElement("div", "extract-text", extract.extracted_text?.trim() || emptyText);
     card.appendChild(text);
     extractList.appendChild(card);
+  });
+}
+
+function renderUploadedFiles() {
+  if (!uploadedFileList) return;
+
+  uploadedFileList.innerHTML = "";
+
+  if (!activeProject()) {
+    uploadedFileList.appendChild(createElement("p", "empty-text", "프로젝트를 먼저 선택해 주세요."));
+    return;
+  }
+
+  if (state.files.length === 0) {
+    uploadedFileList.appendChild(createElement("p", "empty-text", "아직 업로드된 파일이 없습니다."));
+    return;
+  }
+
+  state.files.forEach((file) => {
+    const row = createElement("article", "uploaded-file-row");
+    const info = createElement("div");
+    info.appendChild(createElement("strong", "", file.name));
+    info.appendChild(createElement("span", "", `${displayKind(file.kind)} · ${new Date(file.created_at).toLocaleString("ko-KR")}`));
+    row.appendChild(info);
+
+    const button = createElement("button", "danger-btn", "삭제");
+    button.type = "button";
+    button.addEventListener("click", () => deleteFile(file.id));
+    row.appendChild(button);
+    uploadedFileList.appendChild(row);
   });
 }
 
@@ -523,6 +560,7 @@ function renderAll() {
   renderProjectTable();
   renderProjectHeader();
   renderDashboard();
+  renderUploadedFiles();
   renderCounts();
   renderExtracts();
   renderCategoryOutput();
@@ -598,6 +636,31 @@ async function uploadFile(projectId, input) {
   setPage("extracts");
   startExtractionPolling();
   showToast("파일 저장은 완료되었습니다. 문서 분석은 서버에서 계속 진행됩니다.");
+}
+
+async function deleteFile(fileId) {
+  const project = activeProject();
+  if (!project || !fileId) {
+    showToast("삭제할 파일을 찾지 못했습니다.");
+    return;
+  }
+
+  const file = state.files.find((item) => item.id === fileId);
+  const fileName = file?.name || "선택한 파일";
+  const confirmed = window.confirm(`${fileName} 파일을 삭제할까요?\n문서 추출 결과도 함께 삭제됩니다.`);
+  if (!confirmed) return;
+
+  try {
+    updateUploadStatus("파일 삭제 중");
+    await api(`/api/projects/${project.id}/files/${fileId}`, {
+      method: "DELETE",
+    });
+    selectedRiskId = null;
+    await loadProject(project.id);
+    showToast("파일을 삭제했습니다.");
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 projectForm.addEventListener("submit", async (event) => {

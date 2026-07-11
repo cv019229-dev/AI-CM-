@@ -142,6 +142,43 @@ export async function addProjectFile(projectId, { kind, name, r2Key, url }) {
   return file;
 }
 
+export async function getProjectFile(projectId, fileId) {
+  if (pool) {
+    const result = await pool.query(
+      "select * from project_files where project_id = $1 and id = $2",
+      [projectId, fileId],
+    );
+    return result.rows[0] || null;
+  }
+
+  const files = memory.files.get(projectId) || [];
+  return files.find((file) => file.id === fileId) || null;
+}
+
+export async function deleteProjectFile(projectId, fileId) {
+  const file = await getProjectFile(projectId, fileId);
+  if (!file) return null;
+
+  if (pool) {
+    await pool.query("delete from project_files where project_id = $1 and id = $2", [projectId, fileId]);
+    return file;
+  }
+
+  const files = memory.files.get(projectId) || [];
+  memory.files.set(
+    projectId,
+    files.filter((item) => item.id !== fileId),
+  );
+
+  const extracts = memory.documentExtracts.get(projectId) || [];
+  memory.documentExtracts.set(
+    projectId,
+    extracts.filter((item) => item.file_id !== fileId),
+  );
+
+  return file;
+}
+
 export async function saveDocumentExtract(projectId, file, extract) {
   const row = {
     id: randomUUID(),

@@ -205,6 +205,7 @@ GET /api/projects/:projectId
 POST /api/projects/:projectId/files/presign
 POST /api/projects/:projectId/files
 POST /api/projects/:projectId/files/upload
+DELETE /api/projects/:projectId/files/:fileId
 ```
 
 ### 검토 결과

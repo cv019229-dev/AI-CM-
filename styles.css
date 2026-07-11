@@ -450,6 +450,47 @@ h2 {
   gap: 12px;
 }
 
+.uploaded-file-list {
+  display: grid;
+  gap: 10px;
+}
+
+.uploaded-file-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+  padding: 12px;
+}
+
+.uploaded-file-row strong,
+.uploaded-file-row span {
+  display: block;
+}
+
+.uploaded-file-row span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.danger-btn {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: var(--red-soft);
+  color: var(--red);
+  padding: 0 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .upload-row {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
@@ -527,6 +568,13 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+}
+
+.file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .extract-card h3 {

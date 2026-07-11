@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 function r2Endpoint() {
@@ -118,4 +118,20 @@ export async function getObjectBuffer(key) {
   });
   const result = await createClient().send(command);
   return streamToBuffer(result.Body);
+}
+
+export async function deleteObject(key) {
+  if (!key) return;
+
+  if (!isR2Configured()) {
+    const error = new Error("Cloudflare R2 환경변수가 아직 설정되지 않았습니다.");
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const command = new DeleteObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME,
+    Key: key,
+  });
+  await createClient().send(command);
 }

@@ -8,7 +8,9 @@ import { fileURLToPath } from "node:url";
 import {
   addProjectFile,
   createProject,
+  deleteProjectFile,
   dbMode,
+  getProjectFile,
   getProject,
   initDb,
   listDocumentExtracts,
@@ -20,7 +22,13 @@ import {
 } from "./db.js";
 import { buildComparisonCandidates } from "./comparison.js";
 import { extractDocument } from "./extractor.js";
-import { createUploadUrl, getObjectBuffer, isR2Configured, uploadObjectBuffer } from "./r2.js";
+import {
+  createUploadUrl,
+  deleteObject,
+  getObjectBuffer,
+  isR2Configured,
+  uploadObjectBuffer,
+} from "./r2.js";
 import { generateReviewItems, isOpenAIConfigured } from "./openai.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -237,6 +245,30 @@ app.post("/api/projects/:projectId/files", async (request, response, next) => {
     }
 
     return response.status(201).json({ file, documentExtract });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.delete("/api/projects/:projectId/files/:fileId", async (request, response, next) => {
+  try {
+    const project = await getProject(request.params.projectId);
+    if (!project) {
+      return response.status(404).json({ error: "프로젝트를 찾을 수 없습니다." });
+    }
+
+    const file = await getProjectFile(project.id, request.params.fileId);
+    if (!file) {
+      return response.status(404).json({ error: "삭제할 파일을 찾을 수 없습니다." });
+    }
+
+    if (file.r2_key) {
+      await deleteObject(file.r2_key);
+    }
+
+    await deleteProjectFile(project.id, file.id);
+
+    return response.json({ ok: true, file });
   } catch (error) {
     return next(error);
   }
