@@ -96,14 +96,12 @@ async function api(path, options = {}) {
   return data;
 }
 
-function uploadToStorage(upload, file, onProgress) {
+function uploadToServer(projectId, kind, file, onProgress) {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open(upload.method, upload.uploadUrl);
-
-    Object.entries(upload.headers || {}).forEach(([name, value]) => {
-      request.setRequestHeader(name, value);
-    });
+    const url = `${API_BASE_URL}/api/projects/${projectId}/files/upload?kind=${encodeURIComponent(kind)}&filename=${encodeURIComponent(file.name)}`;
+    request.open("POST", url);
+    request.setRequestHeader("Content-Type", file.type || "application/octet-stream");
 
     request.upload.addEventListener("progress", (event) => {
       if (!event.lengthComputable) return;
@@ -113,22 +111,30 @@ function uploadToStorage(upload, file, onProgress) {
 
     request.addEventListener("load", () => {
       if (request.status >= 200 && request.status < 300) {
-        resolve();
+        const data = request.responseText ? JSON.parse(request.responseText) : {};
+        resolve(data);
         return;
       }
 
-      reject(new Error(`파일 저장소 업로드에 실패했습니다. 상태 코드: ${request.status}`));
+      let message = `파일 업로드에 실패했습니다. 상태 코드: ${request.status}`;
+      try {
+        const data = JSON.parse(request.responseText || "{}");
+        if (data.error) message = data.error;
+      } catch {
+        // Keep the default message.
+      }
+      reject(new Error(message));
     });
 
     request.addEventListener("error", () => {
-      reject(new Error("파일 저장소에 연결하지 못했습니다. R2 CORS 설정 또는 저장소 권한을 확인해 주세요."));
+      reject(new Error("서버에 파일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요."));
     });
 
     request.addEventListener("timeout", () => {
       reject(new Error("파일 업로드 시간이 너무 오래 걸립니다. 파일 크기와 네트워크 상태를 확인해 주세요."));
     });
 
-    request.timeout = 1000 * 60 * 5;
+    request.timeout = 1000 * 60 * 10;
     request.send(file);
   });
 }
@@ -577,37 +583,15 @@ async function uploadFile(projectId, input) {
   if (!file) return;
 
   const kind = input.dataset.fileKind;
-  fileNameFields[kind].textContent = "업로드 주소 요청 중";
+  fileNameFields[kind].textContent = "서버 업로드 준비 중";
   updateUploadStatus("업로드 준비 중");
-
-  const { upload } = await api(`/api/projects/${projectId}/files/presign`, {
-    method: "POST",
-    body: JSON.stringify({
-      kind,
-      filename: file.name,
-      contentType: file.type || "application/octet-stream",
-    }),
-  });
 
   fileNameFields[kind].textContent = "파일 전송 중";
   updateUploadStatus("파일 전송 중");
 
-  await uploadToStorage(upload, file, (percent) => {
+  await uploadToServer(projectId, kind, file, (percent) => {
     fileNameFields[kind].textContent = `파일 전송 중 ${percent}%`;
     updateUploadStatus(`파일 전송 중 ${percent}%`);
-  });
-
-  fileNameFields[kind].textContent = "서버 분석 등록 중";
-  updateUploadStatus("서버 분석 등록 중");
-
-  await api(`/api/projects/${projectId}/files`, {
-    method: "POST",
-    body: JSON.stringify({
-      kind,
-      name: file.name,
-      r2Key: upload.key,
-      url: upload.publicUrl,
-    }),
   });
 
   await loadProject(projectId);

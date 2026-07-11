@@ -45,6 +45,15 @@ function cleanFilename(filename) {
     .slice(0, 140);
 }
 
+function objectKey({ projectId, kind, filename }) {
+  const safeName = cleanFilename(filename || "upload.bin");
+  return `projects/${projectId}/${kind}/${Date.now()}-${safeName}`;
+}
+
+function publicUrlForKey(key) {
+  return process.env.R2_PUBLIC_URL ? `${process.env.R2_PUBLIC_URL.replace(/\/$/, "")}/${key}` : "";
+}
+
 export async function createUploadUrl({ projectId, kind, filename, contentType }) {
   if (!isR2Configured()) {
     const error = new Error("Cloudflare R2 환경변수가 아직 설정되지 않았습니다.");
@@ -52,8 +61,7 @@ export async function createUploadUrl({ projectId, kind, filename, contentType }
     throw error;
   }
 
-  const safeName = cleanFilename(filename || "upload.bin");
-  const key = `projects/${projectId}/${kind}/${Date.now()}-${safeName}`;
+  const key = objectKey({ projectId, kind, filename });
   const command = new PutObjectCommand({
     Bucket: process.env.R2_BUCKET_NAME,
     Key: key,
@@ -61,9 +69,7 @@ export async function createUploadUrl({ projectId, kind, filename, contentType }
   });
 
   const uploadUrl = await getSignedUrl(createClient(), command, { expiresIn: 60 * 10 });
-  const publicUrl = process.env.R2_PUBLIC_URL
-    ? `${process.env.R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`
-    : "";
+  const publicUrl = publicUrlForKey(key);
 
   return {
     method: "PUT",
@@ -73,6 +79,29 @@ export async function createUploadUrl({ projectId, kind, filename, contentType }
     headers: {
       "Content-Type": contentType || "application/octet-stream",
     },
+  };
+}
+
+export async function uploadObjectBuffer({ projectId, kind, filename, contentType, buffer }) {
+  if (!isR2Configured()) {
+    const error = new Error("Cloudflare R2 환경변수가 아직 설정되지 않았습니다.");
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const key = objectKey({ projectId, kind, filename });
+  const command = new PutObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME,
+    Key: key,
+    Body: buffer,
+    ContentType: contentType || "application/octet-stream",
+  });
+
+  await createClient().send(command);
+
+  return {
+    key,
+    publicUrl: publicUrlForKey(key),
   };
 }
 

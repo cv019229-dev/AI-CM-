@@ -25,7 +25,7 @@
 - 시방서 파일 업로드
 - 내역서 파일 업로드
 - Cloudflare R2에 파일 저장
-- Railway API에서 업로드용 임시 주소 발급
+- Railway API가 파일을 받아 Cloudflare R2에 저장
 - 업로드 후 서버가 R2에서 파일을 다시 읽어 문서 내용을 추출
 
 ### 3. 문서 내용 추출
@@ -148,6 +148,7 @@ OPENAI_API_KEY
 OPENAI_MODEL
 OPENAI_OCR_MODEL
 OCR_MAX_BYTES
+UPLOAD_MAX_BYTES
 R2_ACCOUNT_ID
 R2_ACCESS_KEY_ID
 R2_SECRET_ACCESS_KEY
@@ -162,10 +163,12 @@ CORS_ORIGIN
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_OCR_MODEL=gpt-4.1-mini
 OCR_MAX_BYTES=20971520
+UPLOAD_MAX_BYTES=50mb
 CORS_ORIGIN=https://ai-cm-review.vercel.app
 ```
 
 `OCR_MAX_BYTES`는 OCR 처리할 파일의 최대 크기입니다. 기본 예시는 20MB입니다.
+`UPLOAD_MAX_BYTES`는 한 번에 업로드할 수 있는 파일의 최대 크기입니다. 기본 예시는 50MB입니다.
 
 ## 주요 API
 
@@ -200,6 +203,7 @@ GET /api/projects/:projectId
 ```http
 POST /api/projects/:projectId/files/presign
 POST /api/projects/:projectId/files
+POST /api/projects/:projectId/files/upload
 ```
 
 ### 검토 결과

@@ -20,7 +20,7 @@ import {
 } from "./db.js";
 import { buildComparisonCandidates } from "./comparison.js";
 import { extractDocument } from "./extractor.js";
-import { createUploadUrl, getObjectBuffer, isR2Configured } from "./r2.js";
+import { createUploadUrl, getObjectBuffer, isR2Configured, uploadObjectBuffer } from "./r2.js";
 import { generateReviewItems, isOpenAIConfigured } from "./openai.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -40,6 +40,7 @@ const devCorsOrigins = [
 ];
 const corsOrigins =
   configuredCorsOrigins.length > 0 ? [...configuredCorsOrigins, ...devCorsOrigins] : true;
+const uploadLimit = process.env.UPLOAD_MAX_BYTES || "50mb";
 
 app.use(cors({ origin: corsOrigins }));
 app.use(express.json({ limit: "3mb" }));
@@ -147,6 +148,62 @@ app.post("/api/projects/:projectId/files/presign", async (request, response, nex
     return next(error);
   }
 });
+
+app.post(
+  "/api/projects/:projectId/files/upload",
+  express.raw({ type: "*/*", limit: uploadLimit }),
+  async (request, response, next) => {
+    try {
+      const project = await getProject(request.params.projectId);
+      if (!project) {
+        return response.status(404).json({ error: "프로젝트를 찾을 수 없습니다." });
+      }
+
+      const kind = String(request.query.kind || "");
+      const name = String(request.query.filename || "");
+      if (!kind || !name) {
+        return response.status(400).json({ error: "파일 종류와 파일명이 필요합니다." });
+      }
+
+      if (!Buffer.isBuffer(request.body) || request.body.length === 0) {
+        return response.status(400).json({ error: "업로드할 파일 내용이 없습니다." });
+      }
+
+      const upload = await uploadObjectBuffer({
+        projectId: project.id,
+        kind,
+        filename: name,
+        contentType: request.headers["content-type"] || "application/octet-stream",
+        buffer: request.body,
+      });
+
+      const file = await addProjectFile(project.id, {
+        kind,
+        name,
+        r2Key: upload.key,
+        url: upload.publicUrl,
+      });
+
+      const documentExtract = await saveDocumentExtract(project.id, file, {
+        status: "processing",
+        extractedText: "",
+        structuredData: {
+          documentType: file.kind,
+          filename: file.name,
+        },
+        warning: "파일 저장은 완료되었습니다. 서버에서 문서를 분석 중입니다.",
+      });
+
+      extractFileInBackground(project.id, file).catch((error) => {
+        console.error("Background extraction failed", error);
+      });
+
+      return response.status(201).json({ file, documentExtract });
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
 
 app.post("/api/projects/:projectId/files", async (request, response, next) => {
   try {
