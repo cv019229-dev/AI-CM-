@@ -25,7 +25,7 @@ function normalizeItems(items) {
     return fallbackItems;
   }
 
-  return items.slice(0, 30).map((item) => ({
+  return items.slice(0, 50).map((item) => ({
     category: item.category || "불일치·누락",
     type: item.type || "확인",
     issue: item.issue || "확인 필요 항목",
