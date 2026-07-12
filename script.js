@@ -73,6 +73,7 @@ let state = {
   files: [],
   documentExtracts: [],
   reviewItems: [],
+  activeCategoryId: "mismatch",
 };
 let selectedRiskId = null;
 let extractionPollTimer = null;
@@ -238,7 +239,11 @@ function setPage(page, syncHash = true) {
 }
 
 function countByCategory(id) {
-  return currentRisks().filter((item) => classifyCategory(item) === id).length;
+  return risksByCategory(id).length;
+}
+
+function risksByCategory(id) {
+  return currentRisks().filter((item) => classifyCategory(item) === id);
 }
 
 function renderProjectList() {
@@ -411,35 +416,65 @@ function renderUploadedFiles() {
 function renderCategoryOutput() {
   categoryGrid.innerHTML = "";
 
+  const activeCategory =
+    CATEGORIES.find((category) => category.id === state.activeCategoryId) || CATEGORIES[0];
+  const activeItems = risksByCategory(activeCategory.id);
+
+  const tabs = createElement("div", "category-tabs");
   CATEGORIES.forEach((category) => {
-    const items = currentRisks().filter((item) => classifyCategory(item) === category.id);
-    const panel = createElement("article", "category-panel");
-    const head = createElement("div", "category-head");
-    head.appendChild(createElement("h3", "", category.label));
-    head.appendChild(createElement("span", "", `${items.length}건`));
-    panel.appendChild(head);
-
-    const list = createElement("div", "category-items");
-    if (items.length === 0) {
-      list.appendChild(createElement("p", "empty-text", "아직 출력된 항목이 없습니다."));
-    } else {
-      items.forEach((item) => {
-        const button = createElement("button", "category-item");
-        button.type = "button";
-        button.appendChild(createElement("strong", "", fallback(item.issue, "확인 필요 항목")));
-        button.appendChild(createElement("span", "", fallback(item.source, "관련 문서 미표시")));
-        button.appendChild(createElement("em", "", priorityLabel(item.priority)));
-        button.addEventListener("click", () => {
-          selectRisk(item.id);
-          setPage("results");
-        });
-        list.appendChild(button);
-      });
-    }
-
-    panel.appendChild(list);
-    categoryGrid.appendChild(panel);
+    const count = countByCategory(category.id);
+    const button = createElement(
+      "button",
+      `category-tab ${category.id === activeCategory.id ? "active" : ""}`,
+    );
+    button.type = "button";
+    button.appendChild(createElement("strong", "", category.label));
+    button.appendChild(createElement("span", "", `${count}건`));
+    button.addEventListener("click", () => {
+      state.activeCategoryId = category.id;
+      const firstItem = risksByCategory(category.id)[0];
+      if (firstItem) {
+        selectRisk(firstItem.id);
+      } else {
+        selectedRiskId = null;
+        clearDetail();
+        renderRows();
+        renderCategoryOutput();
+      }
+    });
+    tabs.appendChild(button);
   });
+  categoryGrid.appendChild(tabs);
+
+  const panel = createElement("article", "category-panel active");
+  const head = createElement("div", "category-head");
+  head.appendChild(createElement("h3", "", activeCategory.label));
+  head.appendChild(createElement("span", "", `${activeItems.length}건`));
+  panel.appendChild(head);
+
+  const list = createElement("div", "category-items");
+  if (activeItems.length === 0) {
+    list.appendChild(createElement("p", "empty-text", "아직 출력된 항목이 없습니다."));
+  } else {
+    activeItems.forEach((item) => {
+      const button = createElement(
+        "button",
+        `category-item ${item.id === selectedRiskId ? "selected" : ""}`,
+      );
+      button.type = "button";
+      button.appendChild(createElement("strong", "", fallback(item.issue, "확인 필요 항목")));
+      button.appendChild(createElement("span", "", fallback(item.source, "관련 문서 미표시")));
+      button.appendChild(createElement("em", "", priorityLabel(item.priority)));
+      button.addEventListener("click", () => {
+        selectRisk(item.id);
+        setPage("results");
+      });
+      list.appendChild(button);
+    });
+  }
+
+  panel.appendChild(list);
+  categoryGrid.appendChild(panel);
 }
 
 function renderRows(filter = document.querySelector(".tab.active")?.dataset.filter || "all") {
@@ -502,6 +537,7 @@ function selectRisk(id) {
     return;
   }
 
+  state.activeCategoryId = classifyCategory(item);
   const priority = priorityLevel(item.priority);
   detailTitle.textContent = fallback(item.issue, "검토 항목");
   detailPriority.textContent = priorityLabel(item.priority);
@@ -511,6 +547,7 @@ function selectRisk(id) {
   detailAction.textContent = fallback(item.action, "담당자 확인이 필요합니다.");
   rfiText.textContent = fallback(item.rfi, "관련 설계도서 기준 확인을 요청드립니다.");
   renderRows();
+  renderCategoryOutput();
 }
 
 function showToast(message) {
