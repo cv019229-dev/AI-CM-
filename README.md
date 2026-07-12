@@ -102,18 +102,18 @@ Excel에서 `.xlsx`로 다시 저장한 뒤 업로드해 주세요.
 
 ## 서비스 구성
 
-```text
-사용자
-  ↓
-웹 화면 Vercel
-  ↓
-서버 Railway
-  ↓
-데이터베이스 PostgreSQL
-  ↓
-파일 저장소 Cloudflare R2
-  ↓
-OpenAI API
+```mermaid
+flowchart LR
+  user["사용자"] --> web["웹 화면<br/>Vercel"]
+  web --> api["서버<br/>Railway"]
+  api --> db["데이터베이스<br/>PostgreSQL"]
+  api --> storage["파일 저장소<br/>Cloudflare R2"]
+  api --> openai["AI/OCR<br/>OpenAI API"]
+
+  db --> api
+  storage --> api
+  openai --> api
+  api --> web
 ```
 
 쉽게 말하면:
@@ -123,6 +123,55 @@ OpenAI API
 - **PostgreSQL**: 프로젝트와 검토 결과를 저장하는 데이터베이스
 - **Cloudflare R2**: 업로드한 도면, 시방서, 내역서를 저장하는 파일 창고
 - **OpenAI API**: OCR과 AI 검토에 사용
+
+## 작동 방식 한눈에 보기
+
+```mermaid
+flowchart TD
+  start["1. 프로젝트 생성"] --> upload["2. 도면·시방서·내역서 업로드"]
+  upload --> save["3. 원본 파일 저장<br/>Cloudflare R2"]
+  save --> extract["4. 문서 내용 추출<br/>PDF·Excel·HWPX·OCR"]
+  extract --> store["5. 추출 결과 저장<br/>PostgreSQL"]
+  store --> rule["6. 규칙 기반 후보 생성<br/>공종 누락·시험비 누락·수량 차이"]
+  rule --> ai["7. AI 1차 검토<br/>4개 카테고리로 분류"]
+  ai --> result["8. 검토 결과 확인<br/>상세 내용·권장 조치·RFI 초안"]
+```
+
+## AI 분석 구조
+
+```mermaid
+flowchart LR
+  docs["업로드 문서<br/>도면·시방서·내역서"] --> text["텍스트/표 추출"]
+  text --> rules["규칙 기반 비교"]
+  rules --> candidates["검토 후보"]
+  text --> ai["AI 검토"]
+  candidates --> ai
+  ai --> categories["4개 결과 분류"]
+
+  categories --> mismatch["불일치·누락"]
+  categories --> rfi["RFI 후보"]
+  categories --> change["설계변경 검토"]
+  categories --> cost["공사비 영향"]
+```
+
+이 구조의 핵심은 AI가 문서를 바로 확정 판정하지 않는다는 점입니다.  
+먼저 문서에서 내용을 읽고, 규칙으로 의심 항목을 찾은 뒤, AI가 1차 검토 후보로 정리합니다.
+
+## 프로젝트별 자료 분리 구조
+
+```mermaid
+flowchart TD
+  projectA["A 프로젝트"] --> filesA["A 프로젝트 파일"]
+  projectA --> extractsA["A 문서 추출 결과"]
+  projectA --> reviewsA["A 검토 결과"]
+
+  projectB["B 프로젝트"] --> filesB["B 프로젝트 파일"]
+  projectB --> extractsB["B 문서 추출 결과"]
+  projectB --> reviewsB["B 검토 결과"]
+```
+
+각 프로젝트는 따로 관리됩니다.  
+따라서 A 공사에 올린 도면, 시방서, 내역서가 B 공사의 검토 결과와 섞이지 않습니다.
 
 ## AI가 판단할 때 쓰는 기준
 
