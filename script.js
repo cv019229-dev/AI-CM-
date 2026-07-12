@@ -17,20 +17,20 @@ const PAGE_META = {
     subtitle: "도면, 시방서, 내역서를 현재 선택된 프로젝트에 저장합니다.",
   },
   extracts: {
-    eyebrow: "문자인식 및 문서 읽기 결과",
+    eyebrow: "OCR 및 문서 읽기 결과",
     title: "추출 결과 보기",
     subtitle: "서버가 파일에서 읽어낸 내용을 검토 전에 확인합니다.",
   },
   results: {
     eyebrow: "카테고리별 검토",
-    title: "인공지능 검토 결과",
-    subtitle: "불일치, 질의, 설계변경, 공사비 영향으로 나누어 확인합니다.",
+    title: "AI 검토 결과",
+    subtitle: "불일치, RFI, 설계변경, 공사비 영향으로 나누어 확인합니다.",
   },
 };
 
 const CATEGORIES = [
   { id: "mismatch", label: "불일치·누락", color: "red" },
-  { id: "rfi", label: "질의 후보", color: "blue" },
+  { id: "rfi", label: "RFI 후보", color: "blue" },
   { id: "change", label: "설계변경 검토", color: "amber" },
   { id: "cost", label: "공사비 영향", color: "green" },
 ];
@@ -179,8 +179,8 @@ function displayStatus(status) {
   return {
     processing: "분석 중",
     extracted: "분석 완료",
-    ocr_extracted: "문자인식 완료",
-    needs_ocr: "문자인식 필요",
+    ocr_extracted: "OCR 완료",
+    needs_ocr: "OCR 필요",
     unsupported: "지원 안 됨",
     failed: "분석 실패",
   }[status] || status || "상태 없음";
@@ -316,7 +316,7 @@ function renderDashboard() {
     ["선택 프로젝트", project?.name || "없음"],
     ["업로드 상태", `${state.files.length}개 파일 등록`],
     ["문서 추출", `${state.documentExtracts.length}개 추출 결과`],
-    ["인공지능 검토", `${state.reviewItems.length}개 검토 항목`],
+    ["AI 검토", `${state.reviewItems.length}개 검토 항목`],
   ];
 
   dashboardStatus.innerHTML = "";
@@ -370,7 +370,7 @@ function renderExtracts() {
 
     const emptyText =
       extract.status === "processing"
-        ? "파일 저장은 끝났고, 서버가 문서 내용을 읽는 중입니다. 큰 피디에프나 문자인식 파일은 시간이 더 걸릴 수 있습니다."
+        ? "파일 저장은 끝났고, 서버가 문서 내용을 읽는 중입니다. 큰 PDF나 OCR 파일은 시간이 더 걸릴 수 있습니다."
         : "추출된 텍스트가 없습니다.";
     const text = createElement("div", "extract-text", extract.extracted_text?.trim() || emptyText);
     card.appendChild(text);
@@ -491,7 +491,7 @@ function clearDetail() {
   detailIssue.textContent = "검토 항목을 선택하면 상세 내용이 표시됩니다.";
   detailSource.textContent = "-";
   detailAction.textContent = "-";
-  rfiText.textContent = "질의 후보 항목을 선택하면 문안 초안이 표시됩니다.";
+  rfiText.textContent = "RFI 후보 항목을 선택하면 문안 초안이 표시됩니다.";
 }
 
 function selectRisk(id) {
@@ -555,7 +555,7 @@ function startExtractionPolling() {
 
     if (extractionPollCount >= 30 && hasProcessingExtracts()) {
       stopExtractionPolling();
-      showToast("분석이 오래 걸리고 있습니다. 큰 피디에프나 문자인식 파일은 시간이 더 필요할 수 있습니다.");
+      showToast("분석이 오래 걸리고 있습니다. 큰 PDF나 OCR 파일은 시간이 더 필요할 수 있습니다.");
     }
   }, 4000);
 }
@@ -748,20 +748,20 @@ runReview.addEventListener("click", async () => {
     selectedRiskId = state.reviewItems[0]?.id || null;
     renderAll();
     setPage("results");
-    showToast(data.warning || "인공지능 검토 결과를 저장했습니다.");
+    showToast(data.warning || "AI 검토 결과를 저장했습니다.");
   } catch (error) {
     showToast(error.message);
   } finally {
     document.body.classList.remove("is-running");
     runReview.disabled = false;
-    runReview.textContent = "인공지능 검토 실행";
+    runReview.textContent = "AI 검토 실행";
   }
 });
 
 copyRfi.addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(rfiText.textContent.trim());
-    showToast("질의 문안을 복사했습니다.");
+    showToast("RFI 문안을 복사했습니다.");
   } catch {
     showToast("브라우저에서 복사를 허용하지 않았습니다.");
   }

@@ -18,7 +18,7 @@ function maxOcrBytes() {
 function assertSize(buffer, filename) {
   if (buffer.length > maxOcrBytes()) {
     const error = new Error(
-      `${filename} 파일이 문자인식 처리 용량 제한보다 큽니다. 용량 제한을 늘리거나 파일을 나누어 업로드해 주세요.`,
+      `${filename} 파일이 OCR 처리 용량 제한보다 큽니다. 용량 제한을 늘리거나 파일을 나누어 업로드해 주세요.`,
     );
     error.statusCode = 413;
     throw error;
@@ -67,7 +67,7 @@ export function canOcrDocument(file) {
 
 export async function ocrDocument(buffer, file) {
   if (!isOcrConfigured()) {
-    const error = new Error("문자인식을 실행하려면 인공지능 연결 키가 필요합니다.");
+    const error = new Error("OCR을 실행하려면 OpenAI API 키가 필요합니다.");
     error.statusCode = 503;
     throw error;
   }
@@ -123,7 +123,7 @@ export async function ocrDocument(buffer, file) {
     return response.output_text?.trim() || "";
   }
 
-  const error = new Error("이 파일 형식은 문자인식을 지원하지 않습니다.");
+  const error = new Error("이 파일 형식은 OCR을 지원하지 않습니다.");
   error.statusCode = 400;
   throw error;
 }

@@ -169,7 +169,7 @@ async function extractWithOcr(buffer, file, reason, structuredData = {}) {
         filename: file.name,
         ...structuredData,
       },
-      warning: `${reason} 문자인식을 실행하려면 서버에 인공지능 연결 키가 필요합니다.`,
+      warning: `${reason} OCR을 실행하려면 서버에 OpenAI API 키가 필요합니다.`,
     };
   }
 
@@ -186,7 +186,7 @@ async function extractWithOcr(buffer, file, reason, structuredData = {}) {
         ...structuredData,
         lines: firstLines(text),
       },
-      warning: text ? "" : "문자인식을 실행했지만 읽을 수 있는 텍스트를 찾지 못했습니다.",
+      warning: text ? "" : "OCR을 실행했지만 읽을 수 있는 텍스트를 찾지 못했습니다.",
     };
   } catch (error) {
     return {
@@ -199,7 +199,7 @@ async function extractWithOcr(buffer, file, reason, structuredData = {}) {
         ...structuredData,
         error: error.message,
       },
-      warning: `문자인식에 실패했습니다: ${error.message}`,
+      warning: `OCR에 실패했습니다: ${error.message}`,
     };
   }
 }
@@ -378,7 +378,7 @@ async function extractPdfWithoutOcr(buffer, file) {
       info: data.info || {},
       lines,
     },
-    warning: text ? "" : "피디에프에서 텍스트를 찾지 못했습니다. 스캔 도면 또는 이미지 피디에프일 수 있어 문자인식이 필요합니다.",
+    warning: text ? "" : "PDF에서 텍스트를 찾지 못했습니다. 스캔 도면 또는 이미지 PDF일 수 있어 OCR이 필요합니다.",
   };
 }
 
@@ -388,7 +388,7 @@ async function extractPdf(buffer, file) {
   try {
     data = await pdfParse(buffer);
   } catch (error) {
-    return extractWithOcr(buffer, file, "피디에프 텍스트 추출에 실패했습니다.", {
+    return extractWithOcr(buffer, file, "PDF 텍스트 추출에 실패했습니다.", {
       fallbackFrom: "pdf-parse",
       parseError: error.message,
     });
@@ -397,7 +397,7 @@ async function extractPdf(buffer, file) {
   const text = (data.text || "").replace(/\n{3,}/g, "\n\n").trim();
 
   if (!text) {
-    return extractWithOcr(buffer, file, "피디에프 안에 직접 읽을 수 있는 텍스트가 없습니다.", {
+    return extractWithOcr(buffer, file, "PDF 안에 직접 읽을 수 있는 텍스트가 없습니다.", {
       fallbackFrom: "pdf-parse",
       pageCount: data.numpages,
       info: data.info || {},
@@ -419,7 +419,7 @@ async function extractPdf(buffer, file) {
 }
 
 async function extractImage(buffer, file) {
-  return extractWithOcr(buffer, file, "도면 이미지의 글자를 읽으려면 문자인식이 필요합니다.", {
+  return extractWithOcr(buffer, file, "도면 이미지의 글자를 읽으려면 OCR이 필요합니다.", {
     sourceType: "image",
   });
 }
@@ -507,7 +507,7 @@ export async function extractDocument(buffer, file) {
         documentType: file.kind,
         filename: file.name,
       },
-      warning: "구형 .hwp는 현재 서버에서 직접 추출하지 않습니다. 한글에서 .hwpx 또는 피디에프로 저장한 뒤 업로드해 주세요.",
+      warning: "구형 .hwp는 현재 서버에서 직접 추출하지 않습니다. 한글에서 .hwpx 또는 PDF로 저장한 뒤 업로드해 주세요.",
     };
   }
 
