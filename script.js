@@ -1,6 +1,11 @@
 const API_BASE_URL = "https://ai-cm-production.up.railway.app";
 
 const PAGE_META = {
+  home: {
+    eyebrow: "Construction Master",
+    title: "콘마",
+    subtitle: "소규모 공사의 설계도서 검토를 빠르게 돕는 AI-CM 보조 시스템입니다.",
+  },
   dashboard: {
     eyebrow: "설계관리 리스크 1차 분류",
     title: "대시보드",
@@ -40,6 +45,7 @@ const pageEyebrow = document.querySelector("#pageEyebrow");
 const pageSubtitle = document.querySelector("#pageSubtitle");
 const pageViews = document.querySelectorAll("[data-page]");
 const navLinks = document.querySelectorAll("[data-page-link]");
+const pageButtons = document.querySelectorAll("[data-page-button]");
 const projectList = document.querySelector("#projectList");
 const projectTable = document.querySelector("#projectTable");
 const projectForm = document.querySelector("#projectForm");
@@ -67,7 +73,7 @@ const fileNameFields = {
 };
 
 let state = {
-  activePage: "dashboard",
+  activePage: "home",
   activeProjectId: "",
   projects: [],
   files: [],
@@ -224,6 +230,7 @@ function setPage(page, syncHash = true) {
   pageEyebrow.textContent = meta.eyebrow;
   pageTitle.textContent = meta.title;
   pageSubtitle.textContent = meta.subtitle;
+  runReview.hidden = nextPage === "home";
 
   pageViews.forEach((view) => {
     view.classList.toggle("active", view.dataset.page === nextPage);
@@ -811,11 +818,17 @@ navLinks.forEach((link) => {
   });
 });
 
+pageButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setPage(button.dataset.pageButton);
+  });
+});
+
 window.addEventListener("hashchange", () => {
   setPage(location.hash.replace("#", ""), false);
 });
 
-setPage(location.hash.replace("#", "") || "dashboard", false);
+setPage(location.hash.replace("#", "") || "home", false);
 loadProjects().catch((error) => {
   showToast(error.message);
   renderAll();
