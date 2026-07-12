@@ -258,6 +258,11 @@ h2 {
   white-space: nowrap;
 }
 
+.primary-btn[hidden],
+.secondary-btn[hidden] {
+  display: none;
+}
+
 .primary-btn {
   background: linear-gradient(135deg, #1f73a8, #2f95d3);
   color: #ffffff;
