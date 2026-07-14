@@ -87,8 +87,8 @@ export async function createProject({ name, amount, scope }) {
   const project = {
     id: randomUUID(),
     name,
-    amount: amount || "금액 미입력",
-    scope: scope || "범위 미입력",
+    amount: amount || "",
+    scope: scope || "",
     created_at: new Date().toISOString(),
   };
 
@@ -114,6 +114,47 @@ export async function getProject(projectId) {
   }
 
   return memory.projects.get(projectId) || null;
+}
+
+export async function updateProject(projectId, { name, amount, scope }) {
+  if (pool) {
+    const result = await pool.query(
+      `update projects
+       set name = $1, amount = $2, scope = $3
+       where id = $4
+       returning *`,
+      [name, amount || "", scope || "", projectId],
+    );
+    return result.rows[0] || null;
+  }
+
+  const project = memory.projects.get(projectId);
+  if (!project) return null;
+
+  const updated = {
+    ...project,
+    name,
+    amount: amount || "",
+    scope: scope || "",
+  };
+  memory.projects.set(projectId, updated);
+  return updated;
+}
+
+export async function deleteProject(projectId) {
+  const project = await getProject(projectId);
+  if (!project) return null;
+
+  if (pool) {
+    await pool.query("delete from projects where id = $1", [projectId]);
+    return project;
+  }
+
+  memory.projects.delete(projectId);
+  memory.files.delete(projectId);
+  memory.reviewItems.delete(projectId);
+  memory.documentExtracts.delete(projectId);
+  return project;
 }
 
 export async function addProjectFile(projectId, { kind, name, r2Key, url }) {

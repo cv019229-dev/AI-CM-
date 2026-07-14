@@ -49,6 +49,7 @@ const pageButtons = document.querySelectorAll("[data-page-button]");
 const projectList = document.querySelector("#projectList");
 const projectTable = document.querySelector("#projectTable");
 const projectForm = document.querySelector("#projectForm");
+const projectSubmitButton = projectForm.querySelector(".project-submit");
 const uploadedFileList = document.querySelector("#uploadedFileList");
 const currentProjectName = document.querySelector("#currentProjectName");
 const currentProjectMeta = document.querySelector("#currentProjectMeta");
@@ -80,6 +81,7 @@ let state = {
   documentExtracts: [],
   reviewItems: [],
   activeCategoryId: "mismatch",
+  editingProjectId: "",
 };
 let selectedRiskId = null;
 let extractionPollTimer = null;
@@ -153,6 +155,11 @@ function createElement(tag, className, text) {
   if (text != null) element.textContent = text;
   return element;
 }
+
+const projectCancelEditButton = createElement("button", "outline-btn project-cancel", "취소");
+projectCancelEditButton.type = "button";
+projectCancelEditButton.hidden = true;
+projectForm.appendChild(projectCancelEditButton);
 
 function activeProject() {
   return state.projects.find((project) => project.id === state.activeProjectId) || null;
@@ -293,6 +300,17 @@ function renderProjectTable() {
     button.disabled = project.id === state.activeProjectId;
     button.addEventListener("click", () => loadProject(project.id));
     row.appendChild(button);
+
+    const editButton = createElement("button", "outline-btn", "수정");
+    editButton.type = "button";
+    editButton.addEventListener("click", () => startProjectEdit(project));
+    row.appendChild(editButton);
+
+    const deleteButton = createElement("button", "danger-btn", "삭제");
+    deleteButton.type = "button";
+    deleteButton.addEventListener("click", () => removeProject(project));
+    row.appendChild(deleteButton);
+
     projectTable.appendChild(row);
   });
 }
@@ -712,6 +730,59 @@ async function deleteFile(fileId) {
   }
 }
 
+function setProjectFormMode(project = null) {
+  state.editingProjectId = project?.id || "";
+  document.querySelector("#projectNameInput").value = project?.name || "";
+  document.querySelector("#projectAmountInput").value = project?.amount || "";
+  document.querySelector("#projectScopeInput").value = project?.scope || "";
+  projectSubmitButton.textContent = project ? "프로젝트 저장" : "프로젝트 생성";
+  projectCancelEditButton.hidden = !project;
+}
+
+function startProjectEdit(project) {
+  setProjectFormMode(project);
+  setPage("projects");
+  document.querySelector("#projectNameInput").focus();
+}
+
+async function removeProject(project) {
+  const confirmed = window.confirm(
+    `${project.name} 프로젝트를 삭제할까요?\n업로드 파일, 문서 추출 결과, AI 검토 결과도 함께 삭제됩니다.`,
+  );
+  if (!confirmed) return;
+
+  try {
+    await api(`/api/projects/${project.id}`, {
+      method: "DELETE",
+    });
+
+    state.projects = state.projects.filter((item) => item.id !== project.id);
+    if (state.activeProjectId === project.id) {
+      state.activeProjectId = state.projects[0]?.id || "";
+      state.files = [];
+      state.documentExtracts = [];
+      state.reviewItems = [];
+      selectedRiskId = null;
+      if (state.activeProjectId) {
+        await loadProject(state.activeProjectId, { silent: true });
+      }
+    }
+
+    if (state.editingProjectId === project.id) {
+      setProjectFormMode();
+    }
+
+    renderAll();
+    showToast("프로젝트를 삭제했습니다.");
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+projectCancelEditButton.addEventListener("click", () => {
+  setProjectFormMode();
+});
+
 projectForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const name = document.querySelector("#projectNameInput").value.trim();
@@ -720,12 +791,24 @@ projectForm.addEventListener("submit", async (event) => {
   if (!name) return;
 
   try {
+    if (state.editingProjectId) {
+      const { project } = await api(`/api/projects/${state.editingProjectId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name, amount, scope }),
+      });
+      state.projects = state.projects.map((item) => (item.id === project.id ? project : item));
+      setProjectFormMode();
+      await loadProject(project.id);
+      showToast("프로젝트를 수정했습니다.");
+      return;
+    }
+
     const { project } = await api("/api/projects", {
       method: "POST",
       body: JSON.stringify({ name, amount, scope }),
     });
     state.projects = [project, ...state.projects];
-    projectForm.reset();
+    setProjectFormMode();
     await loadProject(project.id);
     setPage("upload");
     showToast("프로젝트를 생성했습니다.");

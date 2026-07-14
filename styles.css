@@ -247,23 +247,25 @@ h2 {
 }
 
 .primary-btn,
-.secondary-btn {
+.secondary-btn,
+.outline-btn {
   display: inline-flex;
   min-height: 42px;
   align-items: center;
   justify-content: center;
-  border: 0;
   border-radius: 8px;
   padding: 0 16px;
   white-space: nowrap;
 }
 
 .primary-btn[hidden],
-.secondary-btn[hidden] {
+.secondary-btn[hidden],
+.outline-btn[hidden] {
   display: none;
 }
 
 .primary-btn {
+  border: 0;
   background: linear-gradient(135deg, #1f73a8, #2f95d3);
   color: #ffffff;
   box-shadow: 0 10px 24px rgba(31, 115, 168, 0.24);
@@ -274,8 +276,16 @@ h2 {
 }
 
 .secondary-btn {
+  border: 0;
   background: var(--nav);
   color: #ffffff;
+}
+
+.outline-btn {
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--ink);
+  font-weight: 900;
 }
 
 .page-view {
@@ -475,7 +485,7 @@ h2 {
 
 .project-form {
   display: grid;
-  grid-template-columns: 1.2fr 0.75fr 1fr auto;
+  grid-template-columns: 1.2fr 0.75fr 1fr auto auto;
   gap: 12px;
   align-items: end;
 }
@@ -512,7 +522,7 @@ h2 {
 
 .project-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 160px minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(180px, 1fr) 160px minmax(180px, 1fr) auto auto auto;
   gap: 12px;
   align-items: center;
   border: 1px solid var(--line);

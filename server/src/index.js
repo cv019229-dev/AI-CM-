@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
   addProjectFile,
   createProject,
+  deleteProject,
   deleteProjectFile,
   dbMode,
   getProjectFile,
@@ -19,6 +20,7 @@ import {
   listReviewItems,
   replaceReviewItems,
   saveDocumentExtract,
+  updateProject,
 } from "./db.js";
 import { buildComparisonCandidates } from "./comparison.js";
 import { extractDocument } from "./extractor.js";
@@ -128,6 +130,54 @@ app.get("/api/projects/:projectId", async (request, response, next) => {
     const documentExtracts = await listDocumentExtracts(project.id);
     const reviewItems = await listReviewItems(project.id);
     return response.json({ project, files, documentExtracts, reviewItems });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.patch("/api/projects/:projectId", async (request, response, next) => {
+  try {
+    const project = await getProject(request.params.projectId);
+    if (!project) {
+      return response.status(404).json({ error: "프로젝트를 찾을 수 없습니다." });
+    }
+
+    const { name, amount, scope } = request.body;
+    if (!name || !name.trim()) {
+      return response.status(400).json({ error: "공사명을 입력해 주세요." });
+    }
+
+    const updatedProject = await updateProject(project.id, {
+      name: name.trim(),
+      amount: amount?.trim(),
+      scope: scope?.trim(),
+    });
+    return response.json({ project: updatedProject });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.delete("/api/projects/:projectId", async (request, response, next) => {
+  try {
+    const project = await getProject(request.params.projectId);
+    if (!project) {
+      return response.status(404).json({ error: "프로젝트를 찾을 수 없습니다." });
+    }
+
+    const files = await listProjectFiles(project.id);
+    await Promise.all(
+      files
+        .filter((file) => file.r2_key)
+        .map((file) =>
+          deleteObject(file.r2_key).catch((error) => {
+            console.error("Project file cleanup failed", file.r2_key, error);
+          }),
+        ),
+    );
+
+    await deleteProject(project.id);
+    return response.json({ ok: true, project });
   } catch (error) {
     return next(error);
   }
