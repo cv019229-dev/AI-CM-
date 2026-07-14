@@ -25,6 +25,7 @@ import {
 import { buildComparisonCandidates } from "./comparison.js";
 import { extractDocument } from "./extractor.js";
 import {
+  createDownloadUrl,
   createUploadUrl,
   deleteObject,
   getObjectBuffer,
@@ -32,6 +33,7 @@ import {
   uploadObjectBuffer,
 } from "./r2.js";
 import { generateReviewItems, isOpenAIConfigured } from "./openai.js";
+import { buildRfiDocument, isRfiReviewItem } from "./rfiDocument.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -373,6 +375,50 @@ app.post("/api/projects/:projectId/reviews/run", async (request, response, next)
       source: generated.source,
       warning: generated.warning,
       reviewItems,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post("/api/projects/:projectId/rfi-documents", async (request, response, next) => {
+  try {
+    const project = await getProject(request.params.projectId);
+    if (!project) {
+      return response.status(404).json({ error: "프로젝트를 찾을 수 없습니다." });
+    }
+
+    const files = await listProjectFiles(project.id);
+    const reviewItems = await listReviewItems(project.id);
+    const rfiItems = reviewItems.filter(isRfiReviewItem);
+    if (rfiItems.length === 0) {
+      return response.status(400).json({ error: "생성할 RFI 후보가 없습니다." });
+    }
+
+    const document = await buildRfiDocument({
+      project,
+      files,
+      reviewItems: rfiItems,
+    });
+    const upload = await uploadObjectBuffer({
+      projectId: project.id,
+      kind: "rfi",
+      filename: document.filename,
+      contentType: document.contentType,
+      buffer: document.buffer,
+    });
+    const downloadUrl = upload.publicUrl || (await createDownloadUrl(upload.key, document.filename));
+    const file = await addProjectFile(project.id, {
+      kind: "rfi",
+      name: document.filename,
+      r2Key: upload.key,
+      url: upload.publicUrl,
+    });
+
+    return response.status(201).json({
+      file,
+      downloadUrl,
+      count: document.count,
     });
   } catch (error) {
     return next(error);

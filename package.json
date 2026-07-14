@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/src/index.js",
     "dev": "node --watch server/src/index.js",
-    "check": "node --check server/src/index.js && node --check server/src/db.js && node --check server/src/r2.js && node --check server/src/openai.js && node --check server/src/ocr.js && node --check server/src/extractor.js && node --check server/src/comparison.js && node --check script.js"
+    "check": "node --check server/src/index.js && node --check server/src/db.js && node --check server/src/r2.js && node --check server/src/openai.js && node --check server/src/ocr.js && node --check server/src/extractor.js && node --check server/src/comparison.js && node --check server/src/rfiDocument.js && node --check script.js"
   },
   "engines": {
     "node": ">=20"

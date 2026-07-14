@@ -66,6 +66,7 @@ const rfiText = document.querySelector("#rfiText");
 const tabs = document.querySelectorAll(".tab");
 const runReview = document.querySelector("#runReview");
 const copyRfi = document.querySelector("#copyRfi");
+const generateRfiDocument = document.querySelector("#generateRfiDocument");
 const storageStatus = document.querySelector("#storageStatus");
 const fileNameFields = {
   drawing: document.querySelector("#drawingFileName"),
@@ -169,6 +170,10 @@ function currentRisks() {
   return state.reviewItems || [];
 }
 
+function currentRfiItems() {
+  return currentRisks().filter((item) => classifyCategory(item) === "rfi");
+}
+
 function processingExtracts() {
   return state.documentExtracts.filter((extract) => extract.status === "processing");
 }
@@ -186,6 +191,7 @@ function displayKind(kind) {
     drawing: "도면",
     spec: "시방서",
     cost: "내역서",
+    rfi: "RFI 문서",
   }[kind] || kind;
 }
 
@@ -891,6 +897,46 @@ copyRfi.addEventListener("click", async () => {
     showToast("RFI 문안을 복사했습니다.");
   } catch {
     showToast("브라우저에서 복사를 허용하지 않았습니다.");
+  }
+});
+
+generateRfiDocument.addEventListener("click", async () => {
+  const project = activeProject();
+  if (!project) {
+    showToast("먼저 프로젝트를 생성하거나 선택해 주세요.");
+    setPage("projects");
+    return;
+  }
+
+  const rfiCount = currentRfiItems().length;
+  if (rfiCount === 0) {
+    showToast("생성할 RFI 후보가 없습니다. 먼저 AI 검토를 실행해 주세요.");
+    return;
+  }
+
+  generateRfiDocument.disabled = true;
+  generateRfiDocument.textContent = "문서 생성 중";
+
+  try {
+    const data = await api(`/api/projects/${project.id}/rfi-documents`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    if (data.downloadUrl) {
+      const link = document.createElement("a");
+      link.href = data.downloadUrl;
+      link.download = data.file?.name || "RFI.docx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    await loadProject(project.id, { silent: true });
+    showToast(`${data.count || rfiCount}건의 RFI 문서를 생성했습니다.`);
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    generateRfiDocument.disabled = false;
+    generateRfiDocument.textContent = "RFI 문서 생성";
   }
 });
 

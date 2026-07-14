@@ -990,6 +990,12 @@ tbody tr.selected {
   line-height: 1.65;
 }
 
+.rfi-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .empty-text,
 .empty-cell {
   color: var(--muted);

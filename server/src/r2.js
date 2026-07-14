@@ -105,6 +105,23 @@ export async function uploadObjectBuffer({ projectId, kind, filename, contentTyp
   };
 }
 
+export async function createDownloadUrl(key, filename) {
+  if (!isR2Configured()) {
+    const error = new Error("Cloudflare R2 환경변수가 아직 설정되지 않았습니다.");
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const command = new GetObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME,
+    Key: key,
+    ResponseContentDisposition: filename
+      ? `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`
+      : undefined,
+  });
+  return getSignedUrl(createClient(), command, { expiresIn: 60 * 10 });
+}
+
 export async function getObjectBuffer(key) {
   if (!isR2Configured()) {
     const error = new Error("Cloudflare R2 환경변수가 아직 설정되지 않았습니다.");
