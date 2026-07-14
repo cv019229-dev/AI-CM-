@@ -439,6 +439,169 @@ h2 {
   line-height: 1.65;
 }
 
+.home-scroll-story {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.home-scroll-sticky {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  min-height: calc(100vh - 56px);
+  align-content: space-between;
+  gap: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(172, 211, 241, 0.28);
+  border-radius: 8px;
+  background: #071625;
+  color: #ffffff;
+  padding: 34px;
+  box-shadow: var(--shadow-strong);
+  transition:
+    background 0.45s ease,
+    color 0.45s ease;
+}
+
+.home-scroll-sticky::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 42px 42px;
+  opacity: 0.34;
+  pointer-events: none;
+}
+
+.home-scroll-sticky[data-theme="project"] {
+  background: #102742;
+}
+
+.home-scroll-sticky[data-theme="upload"] {
+  background: #0b3d65;
+}
+
+.home-scroll-sticky[data-theme="extract"] {
+  background: #0e516d;
+}
+
+.home-scroll-sticky[data-theme="review"] {
+  background: #123c78;
+}
+
+.home-scroll-sticky[data-theme="rfi"] {
+  background: #0d2b4a;
+}
+
+.home-scroll-copy,
+.home-scroll-preview {
+  position: relative;
+  z-index: 1;
+}
+
+.home-scroll-number {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 40px;
+  align-items: center;
+  border-bottom: 2px solid var(--stage-accent, #54c6e8);
+  color: #dff3ff;
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.home-scroll-copy h2 {
+  max-width: 620px;
+  margin: 18px 0 0;
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
+  line-height: 1.12;
+}
+
+.home-scroll-copy p:last-child {
+  max-width: 620px;
+  margin: 16px 0 0;
+  color: rgba(229, 243, 255, 0.82);
+  font-size: 1.02rem;
+  line-height: 1.75;
+}
+
+.home-scroll-preview {
+  display: grid;
+  gap: 10px;
+}
+
+.home-preview-card {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 14px;
+}
+
+.home-preview-card span {
+  color: rgba(229, 243, 255, 0.68);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.home-preview-card strong {
+  color: #ffffff;
+  font-size: 1.05rem;
+}
+
+.home-scroll-steps {
+  display: grid;
+  gap: 14px;
+}
+
+.home-scroll-step {
+  display: grid;
+  gap: 8px;
+  min-height: 52vh;
+  align-content: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 28px;
+  box-shadow: var(--shadow);
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.home-scroll-step span {
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green);
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.home-scroll-step h3 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.home-scroll-step p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.home-scroll-step.is-active {
+  border-color: var(--green);
+  box-shadow: 0 20px 52px rgba(29, 116, 216, 0.16);
+  transform: translateY(-2px);
+}
+
 .panel,
 .metric-card,
 .summary-card,
@@ -1367,8 +1530,15 @@ tbody tr.selected {
 
   .dashboard-grid,
   .review-layout,
-  .home-hero {
+  .home-hero,
+  .home-scroll-story {
     grid-template-columns: 1fr;
+  }
+
+  .home-scroll-sticky {
+    position: relative;
+    top: 0;
+    min-height: auto;
   }
 
   .project-form,
@@ -1430,6 +1600,10 @@ tbody tr.selected {
 
   .home-visual {
     min-height: 260px;
+  }
+
+  .home-scroll-step {
+    min-height: auto;
   }
 }
 

@@ -123,6 +123,93 @@ const fileNameFields = {
   spec: document.querySelector("#specFileName"),
   cost: document.querySelector("#costFileName"),
 };
+const homeScrollStage = document.querySelector("#homeScrollStage");
+const homeScrollNumber = document.querySelector("#homeScrollNumber");
+const homeScrollTitle = document.querySelector("#homeScrollTitle");
+const homeScrollDescription = document.querySelector("#homeScrollDescription");
+const homeScrollPreview = document.querySelector("#homeScrollPreview");
+const homeScrollSteps = document.querySelectorAll("[data-home-step]");
+
+const HOME_SCROLL_STEPS = [
+  {
+    number: "01",
+    theme: "intro",
+    accent: "#54c6e8",
+    title: "설계도서 검토를 빠르게 시작합니다.",
+    description:
+      "콘마는 도면, 시방서, 내역서를 함께 확인해 중소 시공사가 먼저 봐야 할 설계관리 리스크를 정리합니다.",
+    preview: [
+      ["서비스", "AI-CM 설계정보 검토 보조"],
+      ["목표", "우선 확인할 위험 항목 정리"],
+      ["대상", "30억 미만 소규모 공사"],
+    ],
+  },
+  {
+    number: "02",
+    theme: "project",
+    accent: "#6aa5ff",
+    title: "공사별로 자료를 분리합니다.",
+    description:
+      "프로젝트를 생성하면 문서, 추출 결과, AI 검토 결과, RFI 문서가 서로 섞이지 않고 따로 관리됩니다.",
+    preview: [
+      ["프로젝트명", "공사별 독립 관리"],
+      ["검토 범위", "필요 공종 선택"],
+      ["자료 보관", "프로젝트별 분리 저장"],
+    ],
+  },
+  {
+    number: "03",
+    theme: "upload",
+    accent: "#7bc8ff",
+    title: "도면, 시방서, 내역서를 한 곳에 모읍니다.",
+    description:
+      "문서 종류별로 여러 파일을 업로드하고, 업로드 시간순으로 정리해 검토 대상을 선택할 수 있습니다.",
+    preview: [
+      ["도면", "PDF·이미지 업로드"],
+      ["시방서", "PDF·HWPX 문서 관리"],
+      ["내역서", "엑셀 다중 시트 확인"],
+    ],
+  },
+  {
+    number: "04",
+    theme: "extract",
+    accent: "#64d9d8",
+    title: "서버가 문서 내용을 읽습니다.",
+    description:
+      "PDF와 이미지 도면은 OCR로 읽고, 엑셀은 여러 시트를 확인해 AI가 비교할 수 있는 텍스트로 정리합니다.",
+    preview: [
+      ["PDF/OCR", "도면 글자 인식"],
+      ["Excel", "여러 시트 자동 확인"],
+      ["요약", "검토 전 추출 결과 확인"],
+    ],
+  },
+  {
+    number: "05",
+    theme: "review",
+    accent: "#8db2ff",
+    title: "검토 항목을 4가지로 분류합니다.",
+    description:
+      "AI는 설계도서 불일치, RFI 후보, 설계변경 검토, 공사비 영향 가능성을 나누어 우선 확인할 항목을 보여줍니다.",
+    preview: [
+      ["불일치", "문서 간 내용 차이"],
+      ["RFI 후보", "공식 질의 필요 항목"],
+      ["공사비", "누락·물량·단가 영향"],
+    ],
+  },
+  {
+    number: "06",
+    theme: "rfi",
+    accent: "#f0c36a",
+    title: "검토 결과를 문서로 남깁니다.",
+    description:
+      "선택된 RFI 후보를 모아 지정 양식의 RFI 문서로 생성하고, 저장소에 보관해 나중에도 다시 다운로드할 수 있습니다.",
+    preview: [
+      ["RFI 초안", "문안 복사"],
+      ["문서 생성", "양식 기반 DOCX 저장"],
+      ["다운로드", "생성 문서 재확인"],
+    ],
+  },
+];
 
 let state = {
   activePage: "home",
@@ -212,6 +299,51 @@ function createElement(tag, className, text) {
   if (className) element.className = className;
   if (text != null) element.textContent = text;
   return element;
+}
+
+function setHomeScrollStep(index) {
+  const step = HOME_SCROLL_STEPS[index] || HOME_SCROLL_STEPS[0];
+  if (!homeScrollStage || !step) return;
+
+  homeScrollStage.dataset.theme = step.theme;
+  homeScrollStage.style.setProperty("--stage-accent", step.accent);
+  homeScrollNumber.textContent = step.number;
+  homeScrollTitle.textContent = step.title;
+  homeScrollDescription.textContent = step.description;
+
+  const cards = step.preview.map(([label, value]) => {
+    const card = createElement("div", "home-preview-card");
+    card.append(createElement("span", "", label));
+    card.append(createElement("strong", "", value));
+    return card;
+  });
+  homeScrollPreview.replaceChildren(...cards);
+
+  homeScrollSteps.forEach((element, elementIndex) => {
+    element.classList.toggle("is-active", elementIndex === index);
+  });
+}
+
+function initHomeScrollStory() {
+  if (!homeScrollStage || homeScrollSteps.length === 0) return;
+  setHomeScrollStep(0);
+
+  if (!("IntersectionObserver" in window)) return;
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!visible) return;
+      setHomeScrollStep(Number(visible.target.dataset.homeStep || 0));
+    },
+    {
+      threshold: [0.35, 0.55, 0.75],
+    }
+  );
+
+  homeScrollSteps.forEach((step) => observer.observe(step));
 }
 
 const projectCancelEditButton = createElement("button", "outline-btn project-cancel", "취소");
@@ -1448,6 +1580,7 @@ window.addEventListener("hashchange", () => {
   setPage(location.hash.replace("#", ""), false);
 });
 
+initHomeScrollStory();
 setPage(location.hash.replace("#", "") || "home", false);
 loadProjects().catch((error) => {
   showToast(error.message);
