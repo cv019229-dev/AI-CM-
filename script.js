@@ -99,6 +99,7 @@ const currentProjectName = document.querySelector("#currentProjectName");
 const currentProjectMeta = document.querySelector("#currentProjectMeta");
 const dashboardStatus = document.querySelector("#dashboardStatus");
 const extractList = document.querySelector("#extractList");
+const extractFilterButtons = document.querySelectorAll("[data-extract-filter]");
 const categoryGrid = document.querySelector("#categoryGrid");
 const tableBody = document.querySelector("#riskTable");
 const detailTitle = document.querySelector("#detailTitle");
@@ -113,7 +114,6 @@ const copyRfi = document.querySelector("#copyRfi");
 const generateRfiDocument = document.querySelector("#generateRfiDocument");
 const rfiDocumentList = document.querySelector("#rfiDocumentList");
 const resultDateFilter = document.querySelector("#resultDateFilter");
-const resultFileFilter = document.querySelector("#resultFileFilter");
 const resultTradeFilter = document.querySelector("#resultTradeFilter");
 const resetResultFilters = document.querySelector("#resetResultFilters");
 const storageStatus = document.querySelector("#storageStatus");
@@ -133,9 +133,9 @@ let state = {
   activeCategoryId: "mismatch",
   editingProjectId: "",
   selectedReviewFileIds: [],
+  extractFilter: "all",
   resultFilters: {
     date: "all",
-    fileId: "all",
     trade: "all",
   },
 };
@@ -324,14 +324,6 @@ function filteredReviewItems() {
 
     if (state.resultFilters.trade !== "all" && item.type !== state.resultFilters.trade) {
       return false;
-    }
-
-    if (state.resultFilters.fileId !== "all") {
-      const file = state.files.find((itemFile) => itemFile.id === state.resultFilters.fileId);
-      const source = String(item.source || "");
-      if (file && !source.includes(file.name) && !source.includes(displayKind(file.kind))) {
-        return false;
-      }
     }
 
     return true;
@@ -569,7 +561,7 @@ function renderCounts() {
 }
 
 function renderResultFilters() {
-  if (!resultDateFilter || !resultFileFilter || !resultTradeFilter) return;
+  if (!resultDateFilter || !resultTradeFilter) return;
 
   const dates = [...new Set((state.reviewItems || []).map((item) => formatDateKey(item.created_at)).filter(Boolean))];
   const trades = [
@@ -578,8 +570,6 @@ function renderResultFilters() {
       ...(state.reviewItems || []).map((item) => item.type).filter(Boolean),
     ]),
   ];
-  const files = sourceProjectFiles();
-
   const renderOptions = (select, options, activeValue, allLabel) => {
     select.innerHTML = "";
     const all = document.createElement("option");
@@ -604,17 +594,17 @@ function renderResultFilters() {
     "전체 일자",
   );
   renderOptions(
-    resultFileFilter,
-    files.map((file) => ({ value: file.id, label: `${displayKind(file.kind)} · ${file.name}` })),
-    state.resultFilters.fileId,
-    "전체 파일",
-  );
-  renderOptions(
     resultTradeFilter,
     trades.map((trade) => ({ value: trade, label: trade })),
     state.resultFilters.trade,
     "전체 공종",
   );
+}
+
+function renderExtractFilters() {
+  extractFilterButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.extractFilter === state.extractFilter);
+  });
 }
 
 function renderExtracts() {
@@ -625,14 +615,21 @@ function renderExtracts() {
     return;
   }
 
-  if (state.documentExtracts.length === 0) {
-    extractList.appendChild(createElement("p", "empty-text", "아직 추출된 문서가 없습니다. 문서 업로드 화면에서 파일을 등록해 주세요."));
+  const selectedIds = new Set(state.selectedReviewFileIds);
+  const visibleExtracts = state.documentExtracts
+    .filter((extract) => state.extractFilter === "all" || selectedIds.has(extract.file_id))
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+  if (visibleExtracts.length === 0) {
+    const message =
+      state.extractFilter === "selected"
+        ? "검토 대상으로 선택된 문서의 추출 결과가 없습니다. 문서 업로드 화면에서 검토 대상을 선택해 주세요."
+        : "아직 추출된 문서가 없습니다. 문서 업로드 화면에서 파일을 등록해 주세요.";
+    extractList.appendChild(createElement("p", "empty-text", message));
     return;
   }
 
-  const groups = groupByKind(
-    state.documentExtracts.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
-  );
+  const groups = groupByKind(visibleExtracts);
 
   ["cost", "drawing", "spec"].forEach((kind) => {
     const section = createElement("section", "document-kind-section");
@@ -668,8 +665,18 @@ function renderExtracts() {
         extract.status === "processing"
           ? "파일 저장은 끝났고, 서버가 문서 내용을 읽는 중입니다. 큰 PDF나 OCR 파일은 시간이 더 걸릴 수 있습니다."
           : "추출된 텍스트가 없습니다.";
-      const text = createElement("div", "extract-text", extract.extracted_text?.trim() || emptyText);
-      card.appendChild(text);
+      const extractedText = extract.extracted_text?.trim() || "";
+      const summary = createElement("div", "extract-summary");
+      summary.appendChild(createElement("span", "", `상태: ${displayStatus(extract.status)}`));
+      summary.appendChild(createElement("span", "", `추출 문자: ${extractedText.length.toLocaleString("ko-KR")}자`));
+      summary.appendChild(createElement("span", "", selectedIds.has(extract.file_id) ? "AI 검토 대상" : "검토 미선택"));
+      card.appendChild(summary);
+
+      const details = document.createElement("details");
+      details.className = "extract-detail";
+      details.appendChild(createElement("summary", "", "추출 내용 펼쳐보기"));
+      details.appendChild(createElement("div", "extract-text", extractedText || emptyText));
+      card.appendChild(details);
       section.appendChild(card);
     });
 
@@ -997,6 +1004,7 @@ function renderAll() {
   renderProjectHeader();
   renderDashboard();
   renderResultFilters();
+  renderExtractFilters();
   renderUploadedFiles();
   renderReviewSourceSelection();
   renderRfiDocuments();
@@ -1039,7 +1047,6 @@ async function loadProject(projectId, options = {}) {
   if (projectChanged && !options.silent) {
     state.resultFilters = {
       date: "all",
-      fileId: "all",
       trade: "all",
     };
   }
@@ -1264,6 +1271,14 @@ topProjectSelect?.addEventListener("change", () => {
   }
 });
 
+extractFilterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    state.extractFilter = button.dataset.extractFilter || "all";
+    renderExtractFilters();
+    renderExtracts();
+  });
+});
+
 selectAllReviewFiles?.addEventListener("click", () => {
   const files = sourceProjectFiles();
   const allSelected = files.length > 0 && files.every((file) => state.selectedReviewFileIds.includes(file.id));
@@ -1277,12 +1292,6 @@ resultDateFilter?.addEventListener("change", () => {
   renderAll();
 });
 
-resultFileFilter?.addEventListener("change", () => {
-  state.resultFilters.fileId = resultFileFilter.value;
-  selectedRiskId = null;
-  renderAll();
-});
-
 resultTradeFilter?.addEventListener("change", () => {
   state.resultFilters.trade = resultTradeFilter.value;
   selectedRiskId = null;
@@ -1292,7 +1301,6 @@ resultTradeFilter?.addEventListener("change", () => {
 resetResultFilters?.addEventListener("click", () => {
   state.resultFilters = {
     date: "all",
-    fileId: "all",
     trade: "all",
   };
   selectedRiskId = null;
@@ -1338,7 +1346,6 @@ runReview.addEventListener("click", async () => {
     selectedRiskId = state.reviewItems[0]?.id || null;
     state.resultFilters = {
       date: "all",
-      fileId: "all",
       trade: "all",
     };
     renderAll();

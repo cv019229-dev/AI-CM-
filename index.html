@@ -273,6 +273,10 @@
                 <p class="eyebrow">문서 추출</p>
                 <h2>서버가 읽은 문서 내용을 확인합니다.</h2>
               </div>
+              <div class="extract-filter-actions" aria-label="추출 결과 보기 방식">
+                <button class="segmented-btn active" type="button" data-extract-filter="all">전체 문서</button>
+                <button class="segmented-btn" type="button" data-extract-filter="selected">검토 대상 문서</button>
+              </div>
             </div>
             <div class="extract-list" id="extractList"></div>
           </section>
@@ -313,10 +317,6 @@
               <label>
                 <span>일자</span>
                 <select id="resultDateFilter"></select>
-              </label>
-              <label>
-                <span>파일</span>
-                <select id="resultFileFilter"></select>
               </label>
               <label>
                 <span>공종</span>
