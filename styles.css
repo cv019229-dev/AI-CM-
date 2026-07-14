@@ -906,7 +906,7 @@ h2 {
 
 .result-filter-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(160px, 1fr)) auto;
+  grid-template-columns: repeat(3, minmax(160px, 1fr)) auto;
   gap: 12px;
   align-items: end;
 }

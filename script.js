@@ -115,6 +115,7 @@ const generateRfiDocument = document.querySelector("#generateRfiDocument");
 const rfiDocumentList = document.querySelector("#rfiDocumentList");
 const resultDateFilter = document.querySelector("#resultDateFilter");
 const resultTradeFilter = document.querySelector("#resultTradeFilter");
+const resultTypeFilter = document.querySelector("#resultTypeFilter");
 const resetResultFilters = document.querySelector("#resetResultFilters");
 const storageStatus = document.querySelector("#storageStatus");
 const fileNameFields = {
@@ -137,6 +138,7 @@ let state = {
   resultFilters: {
     date: "all",
     trade: "all",
+    type: "all",
   },
 };
 let selectedRiskId = null;
@@ -316,13 +318,22 @@ function syncSelectedReviewFileIds() {
   }
 }
 
+function itemMatchesTrade(item, trade) {
+  const text = [item.type, item.issue, item.source, item.action, item.rfi].filter(Boolean).join(" ");
+  return text.includes(trade);
+}
+
 function filteredReviewItems() {
   return (state.reviewItems || []).filter((item) => {
     if (state.resultFilters.date !== "all" && formatDateKey(item.created_at) !== state.resultFilters.date) {
       return false;
     }
 
-    if (state.resultFilters.trade !== "all" && item.type !== state.resultFilters.trade) {
+    if (state.resultFilters.trade !== "all" && !itemMatchesTrade(item, state.resultFilters.trade)) {
+      return false;
+    }
+
+    if (state.resultFilters.type !== "all" && item.type !== state.resultFilters.type) {
       return false;
     }
 
@@ -561,15 +572,11 @@ function renderCounts() {
 }
 
 function renderResultFilters() {
-  if (!resultDateFilter || !resultTradeFilter) return;
+  if (!resultDateFilter || !resultTradeFilter || !resultTypeFilter) return;
 
   const dates = [...new Set((state.reviewItems || []).map((item) => formatDateKey(item.created_at)).filter(Boolean))];
-  const trades = [
-    ...new Set([
-      ...parseScope(activeProject()?.scope || ""),
-      ...(state.reviewItems || []).map((item) => item.type).filter(Boolean),
-    ]),
-  ];
+  const trades = parseScope(activeProject()?.scope || "");
+  const types = [...new Set((state.reviewItems || []).map((item) => item.type).filter(Boolean))];
   const renderOptions = (select, options, activeValue, allLabel) => {
     select.innerHTML = "";
     const all = document.createElement("option");
@@ -598,6 +605,12 @@ function renderResultFilters() {
     trades.map((trade) => ({ value: trade, label: trade })),
     state.resultFilters.trade,
     "전체 공종",
+  );
+  renderOptions(
+    resultTypeFilter,
+    types.map((type) => ({ value: type, label: type })),
+    state.resultFilters.type,
+    "전체 유형",
   );
 }
 
@@ -1048,6 +1061,7 @@ async function loadProject(projectId, options = {}) {
     state.resultFilters = {
       date: "all",
       trade: "all",
+      type: "all",
     };
   }
 
@@ -1298,10 +1312,17 @@ resultTradeFilter?.addEventListener("change", () => {
   renderAll();
 });
 
+resultTypeFilter?.addEventListener("change", () => {
+  state.resultFilters.type = resultTypeFilter.value;
+  selectedRiskId = null;
+  renderAll();
+});
+
 resetResultFilters?.addEventListener("click", () => {
   state.resultFilters = {
     date: "all",
     trade: "all",
+    type: "all",
   };
   selectedRiskId = null;
   renderAll();
@@ -1347,6 +1368,7 @@ runReview.addEventListener("click", async () => {
     state.resultFilters = {
       date: "all",
       trade: "all",
+      type: "all",
     };
     renderAll();
     setPage("results");
