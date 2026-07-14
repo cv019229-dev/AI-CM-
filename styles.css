@@ -82,11 +82,11 @@ button {
 }
 
 .global-logo img {
-  width: 0.82em;
-  height: 0.82em;
-  object-fit: cover;
-  border-radius: 999px;
-  margin: 0 0.02em;
+  width: 0.9em;
+  height: 0.9em;
+  object-fit: contain;
+  margin: 0 0.04em;
+  filter: drop-shadow(0 0 10px rgba(45, 178, 238, 0.42));
 }
 
 .global-icon-btn {
@@ -689,7 +689,9 @@ h2 {
 }
 
 .home-scroll-copy {
-  max-width: 760px;
+  display: grid;
+  max-width: min(920px, 88vw);
+  gap: 14px;
   transition:
     opacity 0.42s ease,
     transform 0.42s ease;
@@ -707,18 +709,24 @@ h2 {
 }
 
 .home-scroll-copy h2 {
-  max-width: 760px;
-  margin: 18px 0 0;
-  font-size: clamp(2.6rem, 7vw, 6rem);
-  line-height: 1.12;
+  max-width: 920px;
+  margin: 0;
+  font-size: clamp(2.35rem, 6.2vw, 5.6rem);
+  line-height: 1.16;
+  text-wrap: balance;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .home-scroll-copy p:last-child {
-  max-width: 720px;
-  margin: 16px 0 0;
+  max-width: 760px;
+  margin: 4px 0 0;
   color: rgba(229, 243, 255, 0.82);
-  font-size: clamp(1rem, 1.6vw, 1.3rem);
-  line-height: 1.75;
+  font-size: clamp(1rem, 1.45vw, 1.24rem);
+  line-height: 1.85;
+  text-wrap: pretty;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .home-scroll-preview {
