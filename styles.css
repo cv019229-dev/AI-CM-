@@ -435,10 +435,16 @@ h2 {
   font-size: 0.86rem;
 }
 
-.dashboard-grid,
-.review-layout {
+.dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 18px;
+  align-items: start;
+}
+
+.review-layout {
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 18px;
   align-items: start;
 }
@@ -884,8 +890,34 @@ h2 {
 
 table {
   width: 100%;
-  min-width: 760px;
+  min-width: 0;
   border-collapse: collapse;
+  table-layout: fixed;
+}
+
+th:nth-child(1),
+td:nth-child(1) {
+  width: 120px;
+}
+
+th:nth-child(2),
+td:nth-child(2) {
+  width: 42%;
+}
+
+th:nth-child(3),
+td:nth-child(3) {
+  width: 28%;
+}
+
+th:nth-child(4),
+td:nth-child(4) {
+  width: 130px;
+}
+
+th:nth-child(5),
+td:nth-child(5) {
+  width: 96px;
 }
 
 th,
@@ -904,6 +936,7 @@ th {
 
 td {
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 tbody tr {
@@ -951,12 +984,12 @@ tbody tr.selected {
 }
 
 .detail-panel {
-  position: sticky;
-  top: 24px;
+  position: static;
 }
 
 .detail-list {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   margin: 0;
 }
@@ -996,8 +1029,11 @@ tbody tr.selected {
   gap: 10px;
 }
 
+.rfi-document-panel {
+  margin-top: 0;
+}
+
 .rfi-document-box {
-  margin-top: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
@@ -1118,6 +1154,7 @@ tbody tr.selected {
 
   .project-form,
   .project-row,
+  .detail-list,
   .rfi-document-row,
   .category-tabs {
     grid-template-columns: 1fr;
