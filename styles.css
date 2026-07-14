@@ -189,6 +189,33 @@ button {
   transform: translateX(0);
 }
 
+.is-work-page .app-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  padding-top: 0;
+}
+
+.is-work-page .global-header,
+.is-work-page .sidebar-backdrop {
+  display: none;
+}
+
+.is-work-page .sidebar {
+  position: sticky;
+  top: 0;
+  left: auto;
+  z-index: 1;
+  width: auto;
+  height: 100vh;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+.is-work-page .main {
+  padding: 28px;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -1705,6 +1732,17 @@ tbody tr.selected {
 }
 
 @media (max-width: 1120px) {
+  .is-work-page .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .is-work-page .sidebar {
+    position: static;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+  }
+
   .current-project {
     margin-top: 18px;
   }
@@ -1739,7 +1777,15 @@ tbody tr.selected {
     padding-top: 84px;
   }
 
+  .is-work-page .app-shell {
+    padding-top: 0;
+  }
+
   .main {
+    padding: 18px;
+  }
+
+  .is-work-page .main {
     padding: 18px;
   }
 
@@ -1764,6 +1810,12 @@ tbody tr.selected {
     left: 10px;
     width: calc(100vw - 20px);
     height: calc(100vh - 94px);
+  }
+
+  .is-work-page .sidebar {
+    position: static;
+    width: auto;
+    height: auto;
   }
 
   .topbar,

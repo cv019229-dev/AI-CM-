@@ -566,13 +566,19 @@ function setPage(page, syncHash = true) {
   const nextPage = PAGE_META[page] ? page : "dashboard";
   state.activePage = nextPage;
   const meta = PAGE_META[nextPage];
+  const isHomePage = nextPage === "home";
 
   pageEyebrow.textContent = meta.eyebrow;
   pageTitle.textContent = meta.title;
   pageSubtitle.textContent = meta.subtitle;
-  runReview.hidden = nextPage === "home";
+  runReview.hidden = isHomePage;
   if (topbarActions) {
-    topbarActions.hidden = nextPage === "home";
+    topbarActions.hidden = isHomePage;
+  }
+  document.body.classList.toggle("is-home-page", isHomePage);
+  document.body.classList.toggle("is-work-page", !isHomePage);
+  if (!isHomePage) {
+    setMenuOpen(false);
   }
 
   pageViews.forEach((view) => {
@@ -587,7 +593,7 @@ function setPage(page, syncHash = true) {
     history.replaceState(null, "", `#${nextPage}`);
   }
 
-  if (nextPage === "home") {
+  if (isHomePage) {
     scheduleHomeScrollUpdate();
   }
 }
