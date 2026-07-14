@@ -72,20 +72,22 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.02em;
+  gap: 0.1em;
   border: 0;
   background: transparent;
   color: #14365a;
-  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-size: clamp(2rem, 5vw, 3.35rem);
   font-weight: 900;
   letter-spacing: 0;
+  line-height: 1;
 }
 
 .global-logo img {
-  width: 0.9em;
-  height: 0.9em;
+  width: 0.78em;
+  height: 0.78em;
   object-fit: contain;
-  margin: 0 0.04em;
+  transform: translateY(0.015em) scale(1.18);
+  transform-origin: center;
   filter: drop-shadow(0 0 10px rgba(45, 178, 238, 0.42));
 }
 
