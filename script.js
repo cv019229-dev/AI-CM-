@@ -231,6 +231,7 @@ let state = {
 let selectedRiskId = null;
 let extractionPollTimer = null;
 let extractionPollCount = 0;
+let homeScrollFrame = 0;
 
 async function api(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -311,39 +312,42 @@ function setHomeScrollStep(index) {
   homeScrollTitle.textContent = step.title;
   homeScrollDescription.textContent = step.description;
 
-  const cards = step.preview.map(([label, value]) => {
-    const card = createElement("div", "home-preview-card");
-    card.append(createElement("span", "", label));
-    card.append(createElement("strong", "", value));
-    return card;
-  });
-  homeScrollPreview.replaceChildren(...cards);
-
   homeScrollSteps.forEach((element, elementIndex) => {
     element.classList.toggle("is-active", elementIndex === index);
+  });
+}
+
+function updateHomeScrollStep() {
+  if (!homeScrollStage || homeScrollSteps.length === 0) return;
+  const homeView = document.querySelector('[data-page="home"]');
+  if (!homeView?.classList.contains("active")) return;
+
+  const triggerY = window.innerHeight * 0.56;
+  let activeIndex = 0;
+
+  homeScrollSteps.forEach((step, index) => {
+    if (step.getBoundingClientRect().top <= triggerY) {
+      activeIndex = index;
+    }
+  });
+
+  setHomeScrollStep(activeIndex);
+}
+
+function scheduleHomeScrollUpdate() {
+  if (homeScrollFrame) return;
+  homeScrollFrame = window.requestAnimationFrame(() => {
+    homeScrollFrame = 0;
+    updateHomeScrollStep();
   });
 }
 
 function initHomeScrollStory() {
   if (!homeScrollStage || homeScrollSteps.length === 0) return;
   setHomeScrollStep(0);
-
-  if (!("IntersectionObserver" in window)) return;
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      const visible = entries
-        .filter((entry) => entry.isIntersecting)
-        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (!visible) return;
-      setHomeScrollStep(Number(visible.target.dataset.homeStep || 0));
-    },
-    {
-      threshold: [0.35, 0.55, 0.75],
-    }
-  );
-
-  homeScrollSteps.forEach((step) => observer.observe(step));
+  window.addEventListener("scroll", scheduleHomeScrollUpdate, { passive: true });
+  window.addEventListener("resize", scheduleHomeScrollUpdate);
+  scheduleHomeScrollUpdate();
 }
 
 const projectCancelEditButton = createElement("button", "outline-btn project-cancel", "취소");
@@ -562,6 +566,10 @@ function setPage(page, syncHash = true) {
 
   if (syncHash && location.hash !== `#${nextPage}`) {
     history.replaceState(null, "", `#${nextPage}`);
+  }
+
+  if (nextPage === "home") {
+    scheduleHomeScrollUpdate();
   }
 }
 
