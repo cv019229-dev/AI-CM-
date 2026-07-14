@@ -386,8 +386,20 @@ app.post("/api/projects/:projectId/reviews/run", async (request, response, next)
       return response.status(404).json({ error: "프로젝트를 찾을 수 없습니다." });
     }
 
-    const files = await listProjectFiles(project.id);
-    const extracts = await listDocumentExtracts(project.id);
+    const allFiles = await listProjectFiles(project.id);
+    const allExtracts = await listDocumentExtracts(project.id);
+    const selectedFileIds = Array.isArray(request.body.fileIds) ? request.body.fileIds : [];
+    const files =
+      selectedFileIds.length > 0
+        ? allFiles.filter((file) => selectedFileIds.includes(file.id))
+        : allFiles.filter((file) => file.kind !== "rfi");
+    const selectedIds = new Set(files.map((file) => file.id));
+    const extracts = allExtracts.filter((extract) => selectedIds.has(extract.file_id));
+
+    if (files.length === 0) {
+      return response.status(400).json({ error: "AI 검토에 사용할 문서를 선택해 주세요." });
+    }
+
     const candidates = buildComparisonCandidates({ project, files, extracts });
     const generated = await generateReviewItems({
       project,

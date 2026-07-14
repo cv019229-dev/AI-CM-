@@ -40,6 +40,45 @@ const CATEGORIES = [
   { id: "cost", label: "공사비 영향", color: "green" },
 ];
 
+const TRADE_OPTIONS = [
+  "가설",
+  "철거",
+  "토공",
+  "기초",
+  "콘크리트",
+  "철근",
+  "거푸집",
+  "철골",
+  "조적",
+  "미장",
+  "방수",
+  "단열",
+  "지붕",
+  "석공",
+  "타일",
+  "도장",
+  "수장",
+  "바닥",
+  "창호",
+  "유리",
+  "금속",
+  "목공",
+  "가구",
+  "조경",
+  "토목",
+  "전기",
+  "조명",
+  "통신",
+  "소방",
+  "기계",
+  "설비",
+  "공조",
+  "가스",
+  "승강기",
+  "안전",
+  "시험·검사",
+];
+
 const pageTitle = document.querySelector("#pageTitle");
 const pageEyebrow = document.querySelector("#pageEyebrow");
 const pageSubtitle = document.querySelector("#pageSubtitle");
@@ -47,10 +86,15 @@ const pageViews = document.querySelectorAll("[data-page]");
 const navLinks = document.querySelectorAll("[data-page-link]");
 const pageButtons = document.querySelectorAll("[data-page-button]");
 const projectList = document.querySelector("#projectList");
+const topProjectSelect = document.querySelector("#topProjectSelect");
+const topbarActions = document.querySelector("#topbarActions");
 const projectTable = document.querySelector("#projectTable");
 const projectForm = document.querySelector("#projectForm");
 const projectSubmitButton = projectForm.querySelector(".project-submit");
+const projectScopeOptions = document.querySelector("#projectScopeOptions");
 const uploadedFileList = document.querySelector("#uploadedFileList");
+const reviewSourceList = document.querySelector("#reviewSourceList");
+const selectAllReviewFiles = document.querySelector("#selectAllReviewFiles");
 const currentProjectName = document.querySelector("#currentProjectName");
 const currentProjectMeta = document.querySelector("#currentProjectMeta");
 const dashboardStatus = document.querySelector("#dashboardStatus");
@@ -68,6 +112,10 @@ const runReview = document.querySelector("#runReview");
 const copyRfi = document.querySelector("#copyRfi");
 const generateRfiDocument = document.querySelector("#generateRfiDocument");
 const rfiDocumentList = document.querySelector("#rfiDocumentList");
+const resultDateFilter = document.querySelector("#resultDateFilter");
+const resultFileFilter = document.querySelector("#resultFileFilter");
+const resultTradeFilter = document.querySelector("#resultTradeFilter");
+const resetResultFilters = document.querySelector("#resetResultFilters");
 const storageStatus = document.querySelector("#storageStatus");
 const fileNameFields = {
   drawing: document.querySelector("#drawingFileName"),
@@ -84,6 +132,12 @@ let state = {
   reviewItems: [],
   activeCategoryId: "mismatch",
   editingProjectId: "",
+  selectedReviewFileIds: [],
+  resultFilters: {
+    date: "all",
+    fileId: "all",
+    trade: "all",
+  },
 };
 let selectedRiskId = null;
 let extractionPollTimer = null;
@@ -163,20 +217,125 @@ projectCancelEditButton.type = "button";
 projectCancelEditButton.hidden = true;
 projectForm.appendChild(projectCancelEditButton);
 
+function renderScopeOptions() {
+  projectScopeOptions.innerHTML = "";
+  TRADE_OPTIONS.forEach((trade) => {
+    const label = createElement("label", "scope-option");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = trade;
+    input.addEventListener("change", () => {
+      document.querySelector("#projectScopeInput").value = getSelectedScopes().join(", ");
+    });
+    label.appendChild(input);
+    label.appendChild(createElement("span", "", trade));
+    projectScopeOptions.appendChild(label);
+  });
+}
+
+renderScopeOptions();
+
 function activeProject() {
   return state.projects.find((project) => project.id === state.activeProjectId) || null;
 }
 
 function currentRisks() {
-  return state.reviewItems || [];
+  return filteredReviewItems();
 }
 
 function currentRfiItems() {
   return currentRisks().filter((item) => classifyCategory(item) === "rfi");
 }
 
+function sourceProjectFiles() {
+  return state.files
+    .filter((file) => file.kind !== "rfi")
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+}
+
 function rfiDocumentFiles() {
-  return state.files.filter((file) => file.kind === "rfi");
+  return state.files
+    .filter((file) => file.kind === "rfi")
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+}
+
+function groupByKind(items) {
+  const groups = {
+    cost: [],
+    drawing: [],
+    spec: [],
+  };
+  items.forEach((item) => {
+    if (groups[item.kind]) groups[item.kind].push(item);
+  });
+  return groups;
+}
+
+function parseScope(scope = "") {
+  return scope
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getSelectedScopes() {
+  return [...projectScopeOptions.querySelectorAll("input:checked")].map((input) => input.value);
+}
+
+function setSelectedScopes(scope = "") {
+  const selected = new Set(parseScope(scope));
+  projectScopeOptions.querySelectorAll("input").forEach((input) => {
+    input.checked = selected.has(input.value);
+  });
+  document.querySelector("#projectScopeInput").value = [...selected].join(", ");
+}
+
+function formatDateKey(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString("ko-KR");
+}
+
+function selectedReviewFiles() {
+  const ids = new Set(state.selectedReviewFileIds);
+  return sourceProjectFiles().filter((file) => ids.has(file.id));
+}
+
+function reviewSourceText() {
+  const files = selectedReviewFiles();
+  if (files.length === 0) return "선택된 문서 없음";
+  return files.map((file) => `${displayKind(file.kind)}: ${file.name}`).join(", ");
+}
+
+function syncSelectedReviewFileIds() {
+  const sourceFiles = sourceProjectFiles();
+  const existingIds = new Set(sourceFiles.map((file) => file.id));
+  state.selectedReviewFileIds = state.selectedReviewFileIds.filter((id) => existingIds.has(id));
+
+  if (state.selectedReviewFileIds.length === 0 && sourceFiles.length > 0) {
+    state.selectedReviewFileIds = sourceFiles.map((file) => file.id);
+  }
+}
+
+function filteredReviewItems() {
+  return (state.reviewItems || []).filter((item) => {
+    if (state.resultFilters.date !== "all" && formatDateKey(item.created_at) !== state.resultFilters.date) {
+      return false;
+    }
+
+    if (state.resultFilters.trade !== "all" && item.type !== state.resultFilters.trade) {
+      return false;
+    }
+
+    if (state.resultFilters.fileId !== "all") {
+      const file = state.files.find((itemFile) => itemFile.id === state.resultFilters.fileId);
+      const source = String(item.source || "");
+      if (file && !source.includes(file.name) && !source.includes(displayKind(file.kind))) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 }
 
 function processingExtracts() {
@@ -185,6 +344,11 @@ function processingExtracts() {
 
 function hasProcessingExtracts() {
   return processingExtracts().length > 0;
+}
+
+function selectedProcessingExtracts() {
+  const selected = new Set(state.selectedReviewFileIds);
+  return processingExtracts().filter((extract) => selected.has(extract.file_id));
 }
 
 function fallback(value, text = "-") {
@@ -249,6 +413,9 @@ function setPage(page, syncHash = true) {
   pageTitle.textContent = meta.title;
   pageSubtitle.textContent = meta.subtitle;
   runReview.hidden = nextPage === "home";
+  if (topbarActions) {
+    topbarActions.hidden = nextPage === "home";
+  }
 
   pageViews.forEach((view) => {
     view.classList.toggle("active", view.dataset.page === nextPage);
@@ -286,6 +453,30 @@ function renderProjectList() {
     button.appendChild(createElement("span", "", `${fallback(project.amount, "금액 미입력")} · ${fallback(project.scope, "범위 미입력")}`));
     button.addEventListener("click", () => loadProject(project.id));
     projectList.appendChild(button);
+  });
+}
+
+function renderTopProjectSelect() {
+  if (!topProjectSelect) return;
+
+  topProjectSelect.innerHTML = "";
+
+  if (state.projects.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "프로젝트 없음";
+    topProjectSelect.appendChild(option);
+    topProjectSelect.disabled = true;
+    return;
+  }
+
+  topProjectSelect.disabled = false;
+  state.projects.forEach((project) => {
+    const option = document.createElement("option");
+    option.value = project.id;
+    option.textContent = project.name;
+    option.selected = project.id === state.activeProjectId;
+    topProjectSelect.appendChild(option);
   });
 }
 
@@ -341,8 +532,9 @@ function renderProjectHeader() {
   currentProjectMeta.textContent = `${fallback(project.amount, "금액 미입력")} · ${fallback(project.scope, "범위 미입력")}`;
 
   ["drawing", "spec", "cost"].forEach((kind) => {
-    const file = state.files.find((item) => item.kind === kind);
-    fileNameFields[kind].textContent = file?.name || "선택된 파일 없음";
+    const files = sourceProjectFiles().filter((item) => item.kind === kind);
+    fileNameFields[kind].textContent =
+      files.length > 0 ? `${files.length}개 파일 · 최근 ${files[files.length - 1].name}` : "선택된 파일 없음";
   });
 }
 
@@ -376,6 +568,55 @@ function renderCounts() {
   document.querySelector("#countCost").textContent = countByCategory("cost");
 }
 
+function renderResultFilters() {
+  if (!resultDateFilter || !resultFileFilter || !resultTradeFilter) return;
+
+  const dates = [...new Set((state.reviewItems || []).map((item) => formatDateKey(item.created_at)).filter(Boolean))];
+  const trades = [
+    ...new Set([
+      ...parseScope(activeProject()?.scope || ""),
+      ...(state.reviewItems || []).map((item) => item.type).filter(Boolean),
+    ]),
+  ];
+  const files = sourceProjectFiles();
+
+  const renderOptions = (select, options, activeValue, allLabel) => {
+    select.innerHTML = "";
+    const all = document.createElement("option");
+    all.value = "all";
+    all.textContent = allLabel;
+    select.appendChild(all);
+
+    options.forEach(({ value, label }) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      select.appendChild(option);
+    });
+
+    select.value = options.some((option) => option.value === activeValue) ? activeValue : "all";
+  };
+
+  renderOptions(
+    resultDateFilter,
+    dates.map((date) => ({ value: date, label: date })),
+    state.resultFilters.date,
+    "전체 일자",
+  );
+  renderOptions(
+    resultFileFilter,
+    files.map((file) => ({ value: file.id, label: `${displayKind(file.kind)} · ${file.name}` })),
+    state.resultFilters.fileId,
+    "전체 파일",
+  );
+  renderOptions(
+    resultTradeFilter,
+    trades.map((trade) => ({ value: trade, label: trade })),
+    state.resultFilters.trade,
+    "전체 공종",
+  );
+}
+
 function renderExtracts() {
   extractList.innerHTML = "";
 
@@ -389,33 +630,50 @@ function renderExtracts() {
     return;
   }
 
-  state.documentExtracts.forEach((extract) => {
-    const card = createElement("article", "extract-card");
-    const header = createElement("header");
-    const titleWrap = createElement("div");
-    titleWrap.appendChild(createElement("h3", "", extract.name));
-    titleWrap.appendChild(createElement("p", "", `${displayKind(extract.kind)} · ${displayStatus(extract.status)}`));
-    header.appendChild(titleWrap);
-    const headerActions = createElement("div", "file-actions");
-    headerActions.appendChild(createElement("span", "status-badge", displayStatus(extract.status)));
-    const deleteButton = createElement("button", "danger-btn", "삭제");
-    deleteButton.type = "button";
-    deleteButton.addEventListener("click", () => deleteFile(extract.file_id));
-    headerActions.appendChild(deleteButton);
-    header.appendChild(headerActions);
-    card.appendChild(header);
+  const groups = groupByKind(
+    state.documentExtracts.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+  );
 
-    if (extract.warning) {
-      card.appendChild(createElement("p", "", `확인 필요: ${extract.warning}`));
+  ["cost", "drawing", "spec"].forEach((kind) => {
+    const section = createElement("section", "document-kind-section");
+    section.appendChild(createElement("h3", "", `${displayKind(kind)} (${groups[kind].length}개)`));
+
+    if (groups[kind].length === 0) {
+      section.appendChild(createElement("p", "empty-text", "아직 추출 결과가 없습니다."));
     }
 
-    const emptyText =
-      extract.status === "processing"
-        ? "파일 저장은 끝났고, 서버가 문서 내용을 읽는 중입니다. 큰 PDF나 OCR 파일은 시간이 더 걸릴 수 있습니다."
-        : "추출된 텍스트가 없습니다.";
-    const text = createElement("div", "extract-text", extract.extracted_text?.trim() || emptyText);
-    card.appendChild(text);
-    extractList.appendChild(card);
+    groups[kind].forEach((extract) => {
+      const card = createElement("article", "extract-card");
+      const header = createElement("header");
+      const titleWrap = createElement("div");
+      titleWrap.appendChild(createElement("h3", "", extract.name));
+      titleWrap.appendChild(
+        createElement("p", "", `${displayKind(extract.kind)} · ${displayStatus(extract.status)} · ${new Date(extract.created_at).toLocaleString("ko-KR")}`),
+      );
+      header.appendChild(titleWrap);
+      const headerActions = createElement("div", "file-actions");
+      headerActions.appendChild(createElement("span", "status-badge", displayStatus(extract.status)));
+      const deleteButton = createElement("button", "danger-btn", "삭제");
+      deleteButton.type = "button";
+      deleteButton.addEventListener("click", () => deleteFile(extract.file_id));
+      headerActions.appendChild(deleteButton);
+      header.appendChild(headerActions);
+      card.appendChild(header);
+
+      if (extract.warning) {
+        card.appendChild(createElement("p", "", `확인 필요: ${extract.warning}`));
+      }
+
+      const emptyText =
+        extract.status === "processing"
+          ? "파일 저장은 끝났고, 서버가 문서 내용을 읽는 중입니다. 큰 PDF나 OCR 파일은 시간이 더 걸릴 수 있습니다."
+          : "추출된 텍스트가 없습니다.";
+      const text = createElement("div", "extract-text", extract.extracted_text?.trim() || emptyText);
+      card.appendChild(text);
+      section.appendChild(card);
+    });
+
+    extractList.appendChild(section);
   });
 }
 
@@ -429,25 +687,83 @@ function renderUploadedFiles() {
     return;
   }
 
-  const sourceFiles = state.files.filter((file) => file.kind !== "rfi");
+  const sourceFiles = sourceProjectFiles();
 
   if (sourceFiles.length === 0) {
     uploadedFileList.appendChild(createElement("p", "empty-text", "아직 업로드된 파일이 없습니다."));
     return;
   }
 
-  sourceFiles.forEach((file) => {
-    const row = createElement("article", "uploaded-file-row");
-    const info = createElement("div");
-    info.appendChild(createElement("strong", "", file.name));
-    info.appendChild(createElement("span", "", `${displayKind(file.kind)} · ${new Date(file.created_at).toLocaleString("ko-KR")}`));
-    row.appendChild(info);
+  const groups = groupByKind(sourceFiles);
+  ["cost", "drawing", "spec"].forEach((kind) => {
+    const section = createElement("section", "document-kind-section");
+    section.appendChild(createElement("h3", "", `${displayKind(kind)} (${groups[kind].length}개)`));
 
-    const button = createElement("button", "danger-btn", "삭제");
-    button.type = "button";
-    button.addEventListener("click", () => deleteFile(file.id));
-    row.appendChild(button);
-    uploadedFileList.appendChild(row);
+    if (groups[kind].length === 0) {
+      section.appendChild(createElement("p", "empty-text", "아직 업로드된 파일이 없습니다."));
+    }
+
+    groups[kind].forEach((file) => {
+      const row = createElement("article", "uploaded-file-row");
+      const info = createElement("div");
+      info.appendChild(createElement("strong", "", file.name));
+      info.appendChild(createElement("span", "", `${displayKind(file.kind)} · ${new Date(file.created_at).toLocaleString("ko-KR")}`));
+      row.appendChild(info);
+
+      const button = createElement("button", "danger-btn", "삭제");
+      button.type = "button";
+      button.addEventListener("click", () => deleteFile(file.id));
+      row.appendChild(button);
+      section.appendChild(row);
+    });
+
+    uploadedFileList.appendChild(section);
+  });
+}
+
+function renderReviewSourceSelection() {
+  if (!reviewSourceList) return;
+
+  reviewSourceList.innerHTML = "";
+
+  if (!activeProject()) {
+    reviewSourceList.appendChild(createElement("p", "empty-text", "프로젝트를 먼저 선택해 주세요."));
+    return;
+  }
+
+  const files = sourceProjectFiles();
+  if (files.length === 0) {
+    reviewSourceList.appendChild(createElement("p", "empty-text", "AI 검토에 사용할 문서를 먼저 업로드해 주세요."));
+    return;
+  }
+
+  const selected = new Set(state.selectedReviewFileIds);
+  const groups = groupByKind(files);
+  ["cost", "drawing", "spec"].forEach((kind) => {
+    const section = createElement("section", "document-kind-section");
+    section.appendChild(createElement("h3", "", `${displayKind(kind)} (${groups[kind].length}개)`));
+
+    groups[kind].forEach((file) => {
+      const label = createElement("label", "review-source-row");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = selected.has(file.id);
+      input.addEventListener("change", () => {
+        if (input.checked) {
+          state.selectedReviewFileIds = [...new Set([...state.selectedReviewFileIds, file.id])];
+        } else {
+          state.selectedReviewFileIds = state.selectedReviewFileIds.filter((id) => id !== file.id);
+        }
+      });
+      label.appendChild(input);
+      const text = createElement("span");
+      text.appendChild(createElement("strong", "", file.name));
+      text.appendChild(createElement("small", "", new Date(file.created_at).toLocaleString("ko-KR")));
+      label.appendChild(text);
+      section.appendChild(label);
+    });
+
+    reviewSourceList.appendChild(section);
   });
 }
 
@@ -676,10 +992,13 @@ function startExtractionPolling() {
 
 function renderAll() {
   renderProjectList();
+  renderTopProjectSelect();
   renderProjectTable();
   renderProjectHeader();
   renderDashboard();
+  renderResultFilters();
   renderUploadedFiles();
+  renderReviewSourceSelection();
   renderRfiDocuments();
   renderCounts();
   renderExtracts();
@@ -710,10 +1029,20 @@ async function loadProjects() {
 
 async function loadProject(projectId, options = {}) {
   const data = await api(`/api/projects/${projectId}`);
+  const projectChanged = state.activeProjectId !== projectId;
   state.activeProjectId = projectId;
   state.files = data.files || [];
   state.documentExtracts = data.documentExtracts || [];
   state.reviewItems = data.reviewItems || [];
+  syncSelectedReviewFileIds();
+
+  if (projectChanged && !options.silent) {
+    state.resultFilters = {
+      date: "all",
+      fileId: "all",
+      trade: "all",
+    };
+  }
 
   const exists = state.projects.some((project) => project.id === data.project.id);
   if (!exists) {
@@ -737,8 +1066,8 @@ async function loadProject(projectId, options = {}) {
 }
 
 async function uploadFile(projectId, input) {
-  const file = input.files[0];
-  if (!file) return;
+  const files = [...input.files];
+  if (files.length === 0) return;
 
   const kind = input.dataset.fileKind;
   fileNameFields[kind].textContent = "서버 업로드 준비 중";
@@ -747,10 +1076,17 @@ async function uploadFile(projectId, input) {
   fileNameFields[kind].textContent = "파일 전송 중";
   updateUploadStatus("파일 전송 중");
 
-  await uploadToServer(projectId, kind, file, (percent) => {
-    fileNameFields[kind].textContent = `파일 전송 중 ${percent}%`;
-    updateUploadStatus(`파일 전송 중 ${percent}%`);
-  });
+  for (let index = 0; index < files.length; index += 1) {
+    const file = files[index];
+    const label = `${index + 1}/${files.length}`;
+    fileNameFields[kind].textContent = `${label} uploading`;
+    updateUploadStatus(`${displayKind(kind)} ${label} uploading`);
+
+    await uploadToServer(projectId, kind, file, (percent) => {
+      fileNameFields[kind].textContent = `${label} uploading ${percent}%`;
+      updateUploadStatus(`${displayKind(kind)} ${label} uploading ${percent}%`);
+    });
+  }
 
   await loadProject(projectId);
   setPage("extracts");
@@ -811,7 +1147,7 @@ function setProjectFormMode(project = null) {
   state.editingProjectId = project?.id || "";
   document.querySelector("#projectNameInput").value = project?.name || "";
   document.querySelector("#projectAmountInput").value = project?.amount || "";
-  document.querySelector("#projectScopeInput").value = project?.scope || "";
+  setSelectedScopes(project?.scope || "");
   projectSubmitButton.textContent = project ? "프로젝트 저장" : "프로젝트 생성";
   projectCancelEditButton.hidden = !project;
 }
@@ -922,6 +1258,47 @@ tabs.forEach((tab) => {
   });
 });
 
+topProjectSelect?.addEventListener("change", () => {
+  if (topProjectSelect.value) {
+    loadProject(topProjectSelect.value);
+  }
+});
+
+selectAllReviewFiles?.addEventListener("click", () => {
+  const files = sourceProjectFiles();
+  const allSelected = files.length > 0 && files.every((file) => state.selectedReviewFileIds.includes(file.id));
+  state.selectedReviewFileIds = allSelected ? [] : files.map((file) => file.id);
+  renderReviewSourceSelection();
+});
+
+resultDateFilter?.addEventListener("change", () => {
+  state.resultFilters.date = resultDateFilter.value;
+  selectedRiskId = null;
+  renderAll();
+});
+
+resultFileFilter?.addEventListener("change", () => {
+  state.resultFilters.fileId = resultFileFilter.value;
+  selectedRiskId = null;
+  renderAll();
+});
+
+resultTradeFilter?.addEventListener("change", () => {
+  state.resultFilters.trade = resultTradeFilter.value;
+  selectedRiskId = null;
+  renderAll();
+});
+
+resetResultFilters?.addEventListener("click", () => {
+  state.resultFilters = {
+    date: "all",
+    fileId: "all",
+    trade: "all",
+  };
+  selectedRiskId = null;
+  renderAll();
+});
+
 runReview.addEventListener("click", async () => {
   const project = activeProject();
   if (!project) {
@@ -930,7 +1307,13 @@ runReview.addEventListener("click", async () => {
     return;
   }
 
-  if (hasProcessingExtracts()) {
+  if (state.selectedReviewFileIds.length === 0) {
+    showToast("AI 검토에 사용할 문서를 하나 이상 선택해 주세요.");
+    setPage("upload");
+    return;
+  }
+
+  if (selectedProcessingExtracts().length > 0) {
     showToast("문서 분석이 아직 진행 중입니다. 추출 결과 화면에서 완료 상태를 확인해 주세요.");
     setPage("extracts");
     startExtractionPolling();
@@ -945,11 +1328,19 @@ runReview.addEventListener("click", async () => {
     const data = await api(`/api/projects/${project.id}/reviews/run`, {
       method: "POST",
       body: JSON.stringify({
-        notes: "현재 업로드된 설계도서 목록과 문서 추출 결과를 기준으로 1차 설계관리 리스크 후보를 분류합니다.",
+        fileIds: state.selectedReviewFileIds,
+        notes: `선택된 문서만 기준으로 1차 설계관리 리스크 후보를 분류합니다. 검토 대상: ${reviewSourceText()}. 검토 공종: ${
+          activeProject()?.scope || "전체"
+        }.`,
       }),
     });
     state.reviewItems = data.reviewItems || [];
     selectedRiskId = state.reviewItems[0]?.id || null;
+    state.resultFilters = {
+      date: "all",
+      fileId: "all",
+      trade: "all",
+    };
     renderAll();
     setPage("results");
     showToast(data.warning || "AI 검토 결과를 저장했습니다.");

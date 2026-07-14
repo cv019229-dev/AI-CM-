@@ -68,9 +68,15 @@
             <h1 id="pageTitle">콘마</h1>
             <p id="pageSubtitle">소규모 공사의 설계도서 검토를 빠르게 돕는 AI-CM 보조 시스템입니다.</p>
           </div>
-          <button class="primary-btn" type="button" id="runReview">
-            AI 검토 실행
-          </button>
+          <div class="topbar-actions" id="topbarActions">
+            <label class="top-project-select">
+              <span>프로젝트</span>
+              <select id="topProjectSelect"></select>
+            </label>
+            <button class="primary-btn" type="button" id="runReview">
+              AI 검토 실행
+            </button>
+          </div>
         </header>
 
         <section class="page-view active" data-page="home" aria-label="메인">
@@ -180,10 +186,11 @@
                 <span>공사금액</span>
                 <input id="projectAmountInput" type="text" placeholder="예: 24.8억" />
               </label>
-              <label>
-                <span>검토 범위</span>
-                <input id="projectScopeInput" type="text" placeholder="예: 건축 마감, 방수, 창호" />
-              </label>
+              <div class="project-scope-field">
+                <div class="field-label">검토 범위</div>
+                <input id="projectScopeInput" type="hidden" />
+                <div class="scope-option-grid" id="projectScopeOptions"></div>
+              </div>
               <button class="secondary-btn project-submit" type="submit">프로젝트 생성</button>
             </form>
           </section>
@@ -211,7 +218,7 @@
 
             <div class="upload-list">
               <label class="upload-row">
-                <input type="file" accept=".pdf,.dwg,.jpg,.jpeg,.png,.webp" data-file-kind="drawing" />
+                <input type="file" accept=".pdf,.dwg,.jpg,.jpeg,.png,.webp" data-file-kind="drawing" multiple />
                 <span class="file-icon">도</span>
                 <span>
                   <strong>도면</strong>
@@ -219,7 +226,7 @@
                 </span>
               </label>
               <label class="upload-row">
-                <input type="file" accept=".pdf,.hwp,.hwpx,.doc,.docx" data-file-kind="spec" />
+                <input type="file" accept=".pdf,.hwp,.hwpx,.doc,.docx" data-file-kind="spec" multiple />
                 <span class="file-icon">시</span>
                 <span>
                   <strong>시방서</strong>
@@ -227,7 +234,7 @@
                 </span>
               </label>
               <label class="upload-row">
-                <input type="file" accept=".xls,.xlsx,.xlsm,.csv" data-file-kind="cost" />
+                <input type="file" accept=".xls,.xlsx,.xlsm,.csv" data-file-kind="cost" multiple />
                 <span class="file-icon">내</span>
                 <span>
                   <strong>내역서</strong>
@@ -245,6 +252,17 @@
               </div>
             </div>
             <div class="uploaded-file-list" id="uploadedFileList"></div>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">검토 대상 선택</p>
+                <h2>AI 검토에 사용할 문서를 선택합니다.</h2>
+              </div>
+              <button class="outline-btn" type="button" id="selectAllReviewFiles">전체 선택</button>
+            </div>
+            <div class="review-source-list" id="reviewSourceList"></div>
           </section>
         </section>
 
@@ -283,6 +301,30 @@
               <p>누락, 물량 증가, 신규 단가 가능성</p>
             </article>
           </div>
+
+          <section class="panel result-filter-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">결과 조건</p>
+                <h2>일자, 파일, 공종별로 검토 결과를 확인합니다.</h2>
+              </div>
+            </div>
+            <div class="result-filter-grid">
+              <label>
+                <span>일자</span>
+                <select id="resultDateFilter"></select>
+              </label>
+              <label>
+                <span>파일</span>
+                <select id="resultFileFilter"></select>
+              </label>
+              <label>
+                <span>공종</span>
+                <select id="resultTradeFilter"></select>
+              </label>
+              <button class="outline-btn" type="button" id="resetResultFilters">초기화</button>
+            </div>
+          </section>
 
           <section class="panel">
             <div class="section-heading">
