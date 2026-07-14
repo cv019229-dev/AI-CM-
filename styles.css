@@ -542,7 +542,7 @@ h2 {
   font-weight: 900;
 }
 
-.project-form input {
+.project-form input:not([type="checkbox"]):not([type="hidden"]) {
   width: 100%;
   min-height: 42px;
   border: 1px solid var(--line);
@@ -557,9 +557,10 @@ h2 {
 
 .scope-option-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(92px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
   max-height: 180px;
+  overflow-x: hidden;
   overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -568,26 +569,32 @@ h2 {
 }
 
 .scope-option {
-  display: flex;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
-  min-height: 28px;
+  gap: 8px;
+  min-height: 34px;
+  border-radius: 6px;
+  padding: 4px 6px;
   font-size: 0.86rem;
   line-height: 1.35;
 }
 
 .scope-option input {
   flex: 0 0 auto;
-  width: auto;
-  min-height: auto;
+  width: 16px;
+  height: 16px;
+  min-height: 0;
   margin: 0;
 }
 
 .scope-option span {
+  display: block;
   color: var(--ink);
   font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .project-table {
@@ -1362,7 +1369,7 @@ tbody tr.selected {
   }
 
   .scope-option-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   }
 
   .home-copy {
