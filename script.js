@@ -132,6 +132,7 @@ const homeScrollTitle = document.querySelector("#homeScrollTitle");
 const homeScrollDescription = document.querySelector("#homeScrollDescription");
 const homeScrollPreview = document.querySelector("#homeScrollPreview");
 const homeScrollSteps = document.querySelectorAll("[data-home-step]");
+const homeStepNavButtons = document.querySelectorAll("[data-home-jump]");
 
 const HOME_SCROLL_STEPS = [
   {
@@ -334,6 +335,9 @@ function setHomeScrollStep(index) {
   homeScrollSteps.forEach((element, elementIndex) => {
     element.classList.toggle("is-active", elementIndex === index);
   });
+  homeStepNavButtons.forEach((button, buttonIndex) => {
+    button.classList.toggle("is-active", buttonIndex === index);
+  });
 }
 
 function updateHomeScrollStep() {
@@ -366,6 +370,12 @@ function initHomeScrollStory() {
   setHomeScrollStep(0);
   window.addEventListener("scroll", scheduleHomeScrollUpdate, { passive: true });
   window.addEventListener("resize", scheduleHomeScrollUpdate);
+  homeStepNavButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = homeScrollSteps[Number(button.dataset.homeJump || 0)];
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
   scheduleHomeScrollUpdate();
 }
 

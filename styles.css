@@ -68,6 +68,25 @@ button {
   backdrop-filter: blur(16px);
 }
 
+.is-home-page .global-header {
+  top: 0;
+  width: 100%;
+  min-height: 82px;
+  border-width: 0 0 1px;
+  border-radius: 0;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(7, 14, 25, 0.82);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.22);
+}
+
+.is-home-page .global-logo {
+  color: rgba(245, 250, 255, 0.92);
+}
+
+.is-home-page .global-icon-btn {
+  color: rgba(222, 239, 255, 0.72);
+}
+
 .global-logo {
   display: inline-flex;
   align-items: center;
@@ -624,7 +643,7 @@ h2 {
   border-radius: 0;
   background: #071625;
   color: #ffffff;
-  padding: clamp(120px, 18vh, 180px) clamp(28px, 9vw, 140px) clamp(54px, 9vh, 110px);
+  padding: clamp(118px, 17vh, 168px) clamp(28px, 10vw, 160px) clamp(70px, 10vh, 118px);
   box-shadow: none;
   transition:
     background 0.45s ease,
@@ -636,7 +655,7 @@ h2 {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(4, 18, 31, 0.9), rgba(4, 18, 31, 0.44) 58%, rgba(4, 18, 31, 0.16)),
+    linear-gradient(90deg, rgba(4, 18, 31, 0.92), rgba(4, 18, 31, 0.52) 58%, rgba(4, 18, 31, 0.2)),
     var(--stage-image),
     var(--stage-bg);
   background-position: center;
@@ -720,10 +739,40 @@ h2 {
 .home-scroll-copy {
   display: grid;
   max-width: min(920px, 88vw);
-  gap: 14px;
+  gap: 16px;
   transition:
     opacity 0.42s ease,
     transform 0.42s ease;
+}
+
+.home-scroll-brand {
+  display: grid;
+  width: fit-content;
+  gap: 10px;
+  margin-bottom: clamp(10px, 2vh, 22px);
+}
+
+.home-scroll-brand img {
+  width: clamp(86px, 9vw, 148px);
+  height: clamp(86px, 9vw, 148px);
+  object-fit: contain;
+  filter: drop-shadow(0 0 24px rgba(55, 185, 242, 0.34));
+}
+
+.home-scroll-brand strong {
+  color: rgba(245, 250, 255, 0.94);
+  font-size: clamp(2.2rem, 5vw, 5rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.95;
+}
+
+.home-scroll-brand span {
+  color: rgba(210, 233, 248, 0.7);
+  font-size: clamp(0.76rem, 1.05vw, 0.96rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .home-scroll-number {
@@ -740,7 +789,7 @@ h2 {
 .home-scroll-copy h2 {
   max-width: 920px;
   margin: 0;
-  font-size: clamp(2.35rem, 6.2vw, 5.6rem);
+  font-size: clamp(2.15rem, 5vw, 4.8rem);
   line-height: 1.16;
   text-wrap: balance;
   word-break: keep-all;
@@ -756,6 +805,69 @@ h2 {
   text-wrap: pretty;
   word-break: keep-all;
   overflow-wrap: break-word;
+}
+
+.home-step-nav {
+  position: absolute;
+  top: 50%;
+  right: clamp(22px, 4vw, 76px);
+  z-index: 2;
+  display: grid;
+  gap: 14px;
+  transform: translateY(-50%);
+}
+
+.home-step-nav button {
+  display: grid;
+  grid-template-columns: 34px 16px;
+  gap: 12px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: rgba(222, 239, 255, 0.34);
+  padding: 0;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+.home-step-nav i {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.home-step-nav button.is-active {
+  color: rgba(128, 236, 224, 0.96);
+}
+
+.home-step-nav button.is-active i {
+  width: 12px;
+  height: 12px;
+  box-shadow: 0 0 18px rgba(128, 236, 224, 0.68);
+}
+
+.home-scroll-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  transform: translateX(-50%);
+  color: rgba(222, 239, 255, 0.6);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.28em;
+}
+
+.home-scroll-hint i {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(128, 236, 224, 0.9);
 }
 
 .home-scroll-preview {
@@ -1865,11 +1977,38 @@ tbody tr.selected {
   }
 
   .home-scroll-sticky {
-    padding: 120px 22px 54px;
+    padding: 112px 22px 86px;
   }
 
   .home-scroll-copy h2 {
     font-size: clamp(2.2rem, 14vw, 4.5rem);
+  }
+
+  .home-scroll-brand img {
+    width: 86px;
+    height: 86px;
+  }
+
+  .home-step-nav {
+    top: auto;
+    right: 22px;
+    bottom: 34px;
+    grid-auto-flow: column;
+    gap: 10px;
+    transform: none;
+  }
+
+  .home-step-nav button {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    justify-items: center;
+    font-size: 0.68rem;
+  }
+
+  .home-scroll-hint {
+    left: 22px;
+    bottom: 36px;
+    transform: none;
   }
 
   .home-scroll-step {
