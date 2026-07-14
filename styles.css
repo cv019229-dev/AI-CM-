@@ -996,6 +996,49 @@ tbody tr.selected {
   gap: 10px;
 }
 
+.rfi-document-box {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.rfi-document-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.rfi-document-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+  padding: 10px;
+}
+
+.rfi-document-row strong,
+.rfi-document-row span {
+  display: block;
+}
+
+.rfi-document-row span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.rfi-document-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .empty-text,
 .empty-cell {
   color: var(--muted);
@@ -1075,6 +1118,7 @@ tbody tr.selected {
 
   .project-form,
   .project-row,
+  .rfi-document-row,
   .category-tabs {
     grid-template-columns: 1fr;
   }

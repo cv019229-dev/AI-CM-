@@ -67,6 +67,7 @@ const tabs = document.querySelectorAll(".tab");
 const runReview = document.querySelector("#runReview");
 const copyRfi = document.querySelector("#copyRfi");
 const generateRfiDocument = document.querySelector("#generateRfiDocument");
+const rfiDocumentList = document.querySelector("#rfiDocumentList");
 const storageStatus = document.querySelector("#storageStatus");
 const fileNameFields = {
   drawing: document.querySelector("#drawingFileName"),
@@ -172,6 +173,10 @@ function currentRisks() {
 
 function currentRfiItems() {
   return currentRisks().filter((item) => classifyCategory(item) === "rfi");
+}
+
+function rfiDocumentFiles() {
+  return state.files.filter((file) => file.kind === "rfi");
 }
 
 function processingExtracts() {
@@ -424,12 +429,14 @@ function renderUploadedFiles() {
     return;
   }
 
-  if (state.files.length === 0) {
+  const sourceFiles = state.files.filter((file) => file.kind !== "rfi");
+
+  if (sourceFiles.length === 0) {
     uploadedFileList.appendChild(createElement("p", "empty-text", "아직 업로드된 파일이 없습니다."));
     return;
   }
 
-  state.files.forEach((file) => {
+  sourceFiles.forEach((file) => {
     const row = createElement("article", "uploaded-file-row");
     const info = createElement("div");
     info.appendChild(createElement("strong", "", file.name));
@@ -441,6 +448,45 @@ function renderUploadedFiles() {
     button.addEventListener("click", () => deleteFile(file.id));
     row.appendChild(button);
     uploadedFileList.appendChild(row);
+  });
+}
+
+function renderRfiDocuments() {
+  if (!rfiDocumentList) return;
+
+  rfiDocumentList.innerHTML = "";
+
+  if (!activeProject()) {
+    rfiDocumentList.appendChild(createElement("p", "empty-text", "프로젝트를 먼저 선택해 주세요."));
+    return;
+  }
+
+  const documents = rfiDocumentFiles();
+  if (documents.length === 0) {
+    rfiDocumentList.appendChild(createElement("p", "empty-text", "아직 생성된 RFI 문서가 없습니다."));
+    return;
+  }
+
+  documents.forEach((file) => {
+    const row = createElement("article", "rfi-document-row");
+    const info = createElement("div");
+    info.appendChild(createElement("strong", "", file.name));
+    info.appendChild(createElement("span", "", new Date(file.created_at).toLocaleString("ko-KR")));
+    row.appendChild(info);
+
+    const actions = createElement("div", "rfi-document-actions");
+    const downloadButton = createElement("button", "secondary-btn", "다운로드");
+    downloadButton.type = "button";
+    downloadButton.addEventListener("click", () => downloadProjectFile(file));
+    actions.appendChild(downloadButton);
+
+    const deleteButton = createElement("button", "danger-btn", "삭제");
+    deleteButton.type = "button";
+    deleteButton.addEventListener("click", () => deleteFile(file.id));
+    actions.appendChild(deleteButton);
+
+    row.appendChild(actions);
+    rfiDocumentList.appendChild(row);
   });
 }
 
@@ -634,6 +680,7 @@ function renderAll() {
   renderProjectHeader();
   renderDashboard();
   renderUploadedFiles();
+  renderRfiDocuments();
   renderCounts();
   renderExtracts();
   renderCategoryOutput();
@@ -731,6 +778,30 @@ async function deleteFile(fileId) {
     selectedRiskId = null;
     await loadProject(project.id);
     showToast("파일을 삭제했습니다.");
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function downloadProjectFile(file) {
+  const project = activeProject();
+  if (!project || !file?.id) {
+    showToast("다운로드할 파일을 찾지 못했습니다.");
+    return;
+  }
+
+  try {
+    const data = await api(`/api/projects/${project.id}/files/${file.id}/download`);
+    if (!data.downloadUrl) {
+      throw new Error("다운로드 주소를 만들지 못했습니다.");
+    }
+
+    const link = document.createElement("a");
+    link.href = data.downloadUrl;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   } catch (error) {
     showToast(error.message);
   }

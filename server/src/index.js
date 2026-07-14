@@ -326,6 +326,33 @@ app.delete("/api/projects/:projectId/files/:fileId", async (request, response, n
   }
 });
 
+app.get("/api/projects/:projectId/files/:fileId/download", async (request, response, next) => {
+  try {
+    const project = await getProject(request.params.projectId);
+    if (!project) {
+      return response.status(404).json({ error: "프로젝트를 찾을 수 없습니다." });
+    }
+
+    const file = await getProjectFile(project.id, request.params.fileId);
+    if (!file) {
+      return response.status(404).json({ error: "다운로드할 파일을 찾을 수 없습니다." });
+    }
+
+    if (file.url) {
+      return response.json({ downloadUrl: file.url, file });
+    }
+
+    if (!file.r2_key) {
+      return response.status(404).json({ error: "파일 저장 위치를 찾을 수 없습니다." });
+    }
+
+    const downloadUrl = await createDownloadUrl(file.r2_key, file.name);
+    return response.json({ downloadUrl, file });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.get("/api/projects/:projectId/review-items", async (request, response, next) => {
   try {
     const project = await getProject(request.params.projectId);
