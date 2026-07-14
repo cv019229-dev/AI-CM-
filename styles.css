@@ -32,12 +32,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  background:
-    linear-gradient(180deg, rgba(5, 20, 34, 0.96) 0, rgba(9, 35, 58, 0.9) 280px, rgba(234, 242, 251, 0.98) 560px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    var(--bg);
-  background-size: auto, 44px 44px, 44px 44px, auto;
+  background: var(--bg);
   color: var(--ink);
 }
 
@@ -216,9 +211,7 @@ button {
 .main {
   min-width: 0;
   padding: 28px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 240px),
-    linear-gradient(180deg, transparent 0, rgba(234, 242, 251, 0.96) 300px);
+  background: var(--bg);
 }
 
 .topbar {
