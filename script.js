@@ -235,6 +235,7 @@ let selectedRiskId = null;
 let extractionPollTimer = null;
 let extractionPollCount = 0;
 let homeScrollFrame = 0;
+let activeHomeScrollIndex = -1;
 
 async function api(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -316,12 +317,19 @@ function setMenuOpen(isOpen) {
 function setHomeScrollStep(index) {
   const step = HOME_SCROLL_STEPS[index] || HOME_SCROLL_STEPS[0];
   if (!homeScrollStage || !step) return;
+  if (activeHomeScrollIndex === index) return;
+  activeHomeScrollIndex = index;
 
-  homeScrollStage.dataset.theme = step.theme;
-  homeScrollStage.style.setProperty("--stage-accent", step.accent);
-  homeScrollNumber.textContent = step.number;
-  homeScrollTitle.textContent = step.title;
-  homeScrollDescription.textContent = step.description;
+  homeScrollStage.classList.add("is-fading");
+
+  window.setTimeout(() => {
+    homeScrollStage.dataset.theme = step.theme;
+    homeScrollStage.style.setProperty("--stage-accent", step.accent);
+    homeScrollNumber.textContent = step.number;
+    homeScrollTitle.textContent = step.title;
+    homeScrollDescription.textContent = step.description;
+    homeScrollStage.classList.remove("is-fading");
+  }, 170);
 
   homeScrollSteps.forEach((element, elementIndex) => {
     element.classList.toggle("is-active", elementIndex === index);
