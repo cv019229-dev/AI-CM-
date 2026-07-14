@@ -136,7 +136,17 @@ const homeStepNavButtons = document.querySelectorAll("[data-home-jump]");
 
 const HOME_SCROLL_STEPS = [
   {
+    number: "00",
+    mode: "brand",
+    theme: "intro",
+    accent: "#54c6e8",
+    title: "",
+    description: "",
+    preview: [],
+  },
+  {
     number: "01",
+    mode: "detail",
     theme: "intro",
     accent: "#54c6e8",
     title: "설계도서 검토를 빠르게 시작합니다.",
@@ -150,6 +160,7 @@ const HOME_SCROLL_STEPS = [
   },
   {
     number: "02",
+    mode: "detail",
     theme: "project",
     accent: "#6aa5ff",
     title: "공사별로 자료를 분리합니다.",
@@ -163,6 +174,7 @@ const HOME_SCROLL_STEPS = [
   },
   {
     number: "03",
+    mode: "detail",
     theme: "upload",
     accent: "#7bc8ff",
     title: "도면, 시방서, 내역서를 한 곳에 모읍니다.",
@@ -176,6 +188,7 @@ const HOME_SCROLL_STEPS = [
   },
   {
     number: "04",
+    mode: "detail",
     theme: "extract",
     accent: "#64d9d8",
     title: "서버가 문서 내용을 읽습니다.",
@@ -189,6 +202,7 @@ const HOME_SCROLL_STEPS = [
   },
   {
     number: "05",
+    mode: "detail",
     theme: "review",
     accent: "#8db2ff",
     title: "검토 항목을 4가지로 분류합니다.",
@@ -202,6 +216,7 @@ const HOME_SCROLL_STEPS = [
   },
   {
     number: "06",
+    mode: "detail",
     theme: "rfi",
     accent: "#f0c36a",
     title: "검토 결과를 문서로 남깁니다.",
@@ -325,6 +340,7 @@ function setHomeScrollStep(index) {
 
   window.setTimeout(() => {
     homeScrollStage.dataset.theme = step.theme;
+    homeScrollStage.dataset.mode = step.mode || "detail";
     homeScrollStage.style.setProperty("--stage-accent", step.accent);
     homeScrollNumber.textContent = step.number;
     homeScrollTitle.textContent = step.title;

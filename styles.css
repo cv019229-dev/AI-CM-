@@ -624,7 +624,7 @@ h2 {
 
 .home-scroll-story {
   display: block;
-  min-height: 620vh;
+  min-height: 720vh;
   margin-top: -96px;
 }
 
@@ -745,6 +745,30 @@ h2 {
     transform 0.42s ease;
 }
 
+.home-scroll-detail {
+  display: grid;
+  gap: 16px;
+}
+
+.home-scroll-sticky[data-mode="brand"] .home-scroll-copy {
+  justify-items: center;
+  place-self: center;
+  max-width: min(900px, 90vw);
+  text-align: center;
+}
+
+.home-scroll-sticky[data-mode="brand"] .home-scroll-brand {
+  justify-items: center;
+}
+
+.home-scroll-sticky[data-mode="brand"] .home-scroll-detail {
+  display: none;
+}
+
+.home-scroll-sticky[data-mode="detail"] .home-scroll-brand {
+  display: none;
+}
+
 .home-scroll-brand {
   display: grid;
   width: fit-content;
@@ -753,15 +777,15 @@ h2 {
 }
 
 .home-scroll-brand img {
-  width: clamp(86px, 9vw, 148px);
-  height: clamp(86px, 9vw, 148px);
+  width: clamp(130px, 16vw, 240px);
+  height: clamp(130px, 16vw, 240px);
   object-fit: contain;
   filter: drop-shadow(0 0 24px rgba(55, 185, 242, 0.34));
 }
 
 .home-scroll-brand strong {
   color: rgba(245, 250, 255, 0.94);
-  font-size: clamp(2.2rem, 5vw, 5rem);
+  font-size: clamp(4rem, 10vw, 9rem);
   font-weight: 900;
   letter-spacing: 0;
   line-height: 0.95;
@@ -769,7 +793,7 @@ h2 {
 
 .home-scroll-brand span {
   color: rgba(210, 233, 248, 0.7);
-  font-size: clamp(0.76rem, 1.05vw, 0.96rem);
+  font-size: clamp(0.78rem, 1.25vw, 1.1rem);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1985,8 +2009,12 @@ tbody tr.selected {
   }
 
   .home-scroll-brand img {
-    width: 86px;
-    height: 86px;
+    width: clamp(118px, 32vw, 170px);
+    height: clamp(118px, 32vw, 170px);
+  }
+
+  .home-scroll-brand strong {
+    font-size: clamp(3.5rem, 18vw, 6rem);
   }
 
   .home-step-nav {
