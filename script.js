@@ -86,6 +86,9 @@ const pageViews = document.querySelectorAll("[data-page]");
 const navLinks = document.querySelectorAll("[data-page-link]");
 const pageButtons = document.querySelectorAll("[data-page-button]");
 const projectList = document.querySelector("#projectList");
+const menuToggle = document.querySelector("#menuToggle");
+const appSidebar = document.querySelector("#appSidebar");
+const sidebarBackdrop = document.querySelector("#sidebarBackdrop");
 const topProjectSelect = document.querySelector("#topProjectSelect");
 const topbarActions = document.querySelector("#topbarActions");
 const projectTable = document.querySelector("#projectTable");
@@ -300,6 +303,14 @@ function createElement(tag, className, text) {
   if (className) element.className = className;
   if (text != null) element.textContent = text;
   return element;
+}
+
+function setMenuOpen(isOpen) {
+  if (!menuToggle || !appSidebar || !sidebarBackdrop) return;
+  appSidebar.classList.toggle("is-open", isOpen);
+  sidebarBackdrop.hidden = !isOpen;
+  menuToggle.setAttribute("aria-expanded", String(isOpen));
+  document.body.classList.toggle("menu-open", isOpen);
 }
 
 function setHomeScrollStep(index) {
@@ -1575,13 +1586,30 @@ navLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();
     setPage(link.dataset.pageLink);
+    setMenuOpen(false);
   });
 });
 
 pageButtons.forEach((button) => {
   button.addEventListener("click", () => {
     setPage(button.dataset.pageButton);
+    setMenuOpen(false);
   });
+});
+
+menuToggle?.addEventListener("click", () => {
+  const isOpen = menuToggle.getAttribute("aria-expanded") === "true";
+  setMenuOpen(!isOpen);
+});
+
+sidebarBackdrop?.addEventListener("click", () => {
+  setMenuOpen(false);
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    setMenuOpen(false);
+  }
 });
 
 window.addEventListener("hashchange", () => {

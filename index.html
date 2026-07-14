@@ -8,7 +8,21 @@
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="주요 메뉴">
+      <header class="global-header" aria-label="상단 메뉴">
+        <button class="global-icon-btn" type="button" id="menuToggle" aria-controls="appSidebar" aria-expanded="false" aria-label="메뉴 열기">
+          <span aria-hidden="true"></span>
+        </button>
+        <button class="global-logo" type="button" data-page-button="home" aria-label="메인으로 이동">
+          CONMA
+        </button>
+        <button class="global-icon-btn globe-btn" type="button" aria-label="언어 설정">
+          <span aria-hidden="true">◎</span>
+        </button>
+      </header>
+
+      <div class="sidebar-backdrop" id="sidebarBackdrop" hidden></div>
+
+      <aside class="sidebar" id="appSidebar" aria-label="주요 메뉴">
         <div class="brand">
           <div class="brand-mark" aria-hidden="true">
             <img src="assets/conmaster-logo.png" alt="" />
